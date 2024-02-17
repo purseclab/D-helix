@@ -1,0 +1,1118 @@
+diff --git a/angr/analyses/calling_convention.py b/angr/analyses/calling_convention.py
+index 01c26ed6d..786eaa747 100644
+--- a/angr/analyses/calling_convention.py
++++ b/angr/analyses/calling_convention.py
+@@ -82,8 +82,9 @@ class CallingConventionAnalysis(Analysis):
+     :ivar cc:           The recovered calling convention for the function.
+     """
+ 
+-    def __init__(self, func: 'Function', cfg: Optional['CFGModel']=None, analyze_callsites: bool=False):
++    def __init__(self, func: 'Function', cfg: Optional['CFGModel']=None, analyze_callsites: bool=False, num_args_path: str =""):
+ 
++        self._num_args_path = num_args_path
+         self._function = func
+         self._variable_manager = self.kb.variables
+         self._cfg = cfg
+@@ -102,6 +103,8 @@ class CallingConventionAnalysis(Analysis):
+         The major analysis routine.
+         """
+ 
++        #muqi we want simprocedure and plt here too
++        '''
+         if self._function.is_simprocedure:
+             if self._function.prototype is None:
+                 # try our luck
+@@ -125,6 +128,7 @@ class CallingConventionAnalysis(Analysis):
+             if r is not None:
+                 self.cc, self.prototype = r
+             return
++        '''
+ 
+         r = self._analyze_function()
+         if r is None:
+@@ -192,11 +196,12 @@ class CallingConventionAnalysis(Analysis):
+         Go over the variable information in variable manager for this function, and return all uninitialized
+         register/stack variables.
+         """
+-
++        #muqi we want plt and simprocedure
++        '''
+         if self._function.is_simprocedure or self._function.is_plt:
+             # we do not analyze SimProcedures or PLT stubs
+             return None
+-
++        '''
+         if not self._variable_manager.has_function_manager:
+             l.warning("Please run variable recovery on %r before analyzing its calling convention.", self._function)
+             return None
+@@ -243,15 +248,18 @@ class CallingConventionAnalysis(Analysis):
+         call_sites_by_function: Dict['Function',List[Tuple[int,int]]] = defaultdict(list)
+         for src, _, data in in_edges:
+             edge_type = data.get('jumpkind', 'Ijk_Call')
++            #muqi comment this, since some simprocedure function use Ijk_Boring as jump command, for example getchar
++            '''
+             if edge_type != 'Ijk_Call':
+                 continue
++            '''
+             if not self.kb.functions.contains_addr(src.function_address):
+                 continue
+             caller = self.kb.functions[src.function_address]
+             if caller.is_simprocedure:
+                 # do not analyze SimProcedures
+                 continue
+-            call_sites_by_function[caller].append((src.addr, src.instruction_addrs[-1]))
++            call_sites_by_function[caller].append((src.addr, src.instruction_addrs[-1],self._function.addr))
+ 
+         call_sites_by_function_list = list(call_sites_by_function.items())[:max_analyzing_callsites]
+         ctr = 0
+@@ -263,7 +271,7 @@ class CallingConventionAnalysis(Analysis):
+             # generate a subgraph that only contains the basic block that does the call and the basic block after the
+             # call.
+             for call_site_tuple in call_site_tuples:
+-                caller_block_addr, call_insn_addr = call_site_tuple
++                caller_block_addr, call_insn_addr,callee_function_address = call_site_tuple
+                 func = self.kb.functions[caller.addr]
+                 subgraph = self._generate_callsite_subgraph(func, caller_block_addr)
+ 
+@@ -280,6 +288,17 @@ class CallingConventionAnalysis(Analysis):
+                 fact = self._analyze_callsite(caller_block_addr, call_insn_addr, rda.model)
+                 facts.append(fact)
+ 
++                with open(self._num_args_path,'a') as muqi_file:
++                    if (callee_function_address in self.kb.functions):
++                        '''
++                        print(func.name+"|"+self.kb.functions[callee_function_address].name+
++                        "|"+str(hex(self.kb.functions[callee_function_address].addr))+
++                        "|"+str(len(fact.args)),file=muqi_file)
++                        '''
++                        print(func.name+"|"+self.kb.functions[callee_function_address].name+"|"+
++                        str(hex(self.kb.functions[callee_function_address].addr))+
++                        "|"+str(len(fact.args)),file=muqi_file)
++
+                 ctr += 1
+                 if ctr >= max_analyzing_callsites:
+                     break
+diff --git a/angr/analyses/complete_calling_conventions.py b/angr/analyses/complete_calling_conventions.py
+index 5df5667f7..0987687c9 100644
+--- a/angr/analyses/complete_calling_conventions.py
++++ b/angr/analyses/complete_calling_conventions.py
+@@ -33,7 +33,7 @@ class CompleteCallingConventionsAnalysis(Analysis):
+                  analyze_callsites: bool=False, skip_signature_matched_functions: bool=False,
+                  max_function_blocks: Optional[int]=None, max_function_size: Optional[int]=None, workers: int=0,
+                  cc_callback: Optional[Callable]=None, prioritize_func_addrs: Optional[Iterable[int]]=None,
+-                 skip_other_funcs: bool=False, auto_start: bool=True):
++                 skip_other_funcs: bool=False, auto_start: bool=True,num_args_path: str ="/tmp/call_count_Unknown_angr_numargs.txt"):
+         """
+ 
+         :param recover_variables:   Recover variables on each function before performing calling convention analysis.
+@@ -49,6 +49,8 @@ class CompleteCallingConventionsAnalysis(Analysis):
+         :param max_function_size:   Do not perform calling convention analysis on functions whose sizes are more than
+                                     `max_function_size`. Setting it to None disables this check.
+         :param workers:             Number of multiprocessing workers.
++        :param num_args_path:           Muqi add num_args_path to generate a function name -> number of args map
++        
+         """
+ 
+         self._recover_variables = recover_variables
+@@ -65,6 +67,7 @@ class CompleteCallingConventionsAnalysis(Analysis):
+         self._skip_other_funcs = skip_other_funcs
+         self._auto_start = auto_start
+         self._total_funcs = None
++        self._num_args_path = num_args_path
+ 
+         self._results = [ ]
+         if workers > 0:
+@@ -230,7 +233,8 @@ class CompleteCallingConventionsAnalysis(Analysis):
+         # determine the calling convention of each function
+         cc_analysis = self.project.analyses[CallingConventionAnalysis].prep(kb=self.kb)(
+             func, cfg=self._cfg,
+-            analyze_callsites=self._analyze_callsites)
++            analyze_callsites=self._analyze_callsites,
++            num_args_path = self._num_args_path)
+ 
+         if cc_analysis.cc is not None:
+             _l.info("Determined calling convention and prototype for %r.", func)
+diff --git a/angr/analyses/decompiler/block_simplifier.py b/angr/analyses/decompiler/block_simplifier.py
+index 7a4c229af..1ec140a52 100644
+--- a/angr/analyses/decompiler/block_simplifier.py
++++ b/angr/analyses/decompiler/block_simplifier.py
+@@ -13,6 +13,7 @@ from ...errors import SimMemoryMissingError
+ from .. import Analysis, register_analysis
+ from .peephole_optimizations import STMT_OPTS, EXPR_OPTS, PeepholeOptimizationStmtBase, PeepholeOptimizationExprBase
+ from .ailblock_walker import AILBlockWalker
++from ... import muqi
+ 
+ if TYPE_CHECKING:
+     from angr.storage.memory_mixins.paged_memory.pages.multi_values import MultiValues
+@@ -264,6 +265,13 @@ class BlockSimplifier(Analysis):
+             v = False
+ 
+         def _handle_expr(expr_idx: int, expr: Expression, stmt_idx: int, stmt: Statement, block) -> Optional[Expression]:
++            
++            temp_rules = [ ]
++            try:
++                with open(muqi.decompiler_read_txt,'r') as muqi_file:
++                    temp_rules = muqi_file.readlines()
++            except:
++                pass
+ 
+             old_expr = expr
+ 
+@@ -271,6 +279,15 @@ class BlockSimplifier(Analysis):
+             while redo:
+                 redo = False
+                 for expr_opt in expr_opts:
++                    #muqi block rules
++                    muqi_set = False
++                    for i in range(len(temp_rules)) :  
++                        if expr_opt.NAME in temp_rules[i]:
++                            #print(expr_opt.NAME)
++                            muqi_set = True
++                    if muqi_set:
++                        continue
++
+                     if isinstance(expr, expr_opt.expr_classes):
+                         r = expr_opt.optimize(expr)
+                         if r is not None and r is not expr:
+@@ -296,6 +313,13 @@ class BlockSimplifier(Analysis):
+     @staticmethod
+     def _peephole_optimize_stmts(block, stmt_opts):
+ 
++        temp_rules = [ ]
++        try:
++            with open(muqi.decompiler_read_txt,'r') as muqi_file:
++                temp_rules = muqi_file.readlines()
++        except:
++            pass
++
+         any_update = False
+         statements = [ ]
+ 
+@@ -306,6 +330,15 @@ class BlockSimplifier(Analysis):
+             while redo:
+                 redo = False
+                 for opt in stmt_opts:
++                    #muqi block rules
++                    muqi_set = False
++                    for i in range(len(temp_rules)) :  
++                        if opt.NAME in temp_rules[i]:
++                            #print(opt.NAME)
++                            muqi_set = True
++                    if muqi_set:
++                        continue
++
+                     if isinstance(stmt, opt.stmt_classes):
+                         r = opt.optimize(stmt)
+                         if r is not None and r is not stmt:
+diff --git a/angr/analyses/decompiler/decompilation_options.py b/angr/analyses/decompiler/decompilation_options.py
+index b6ae4d6fc..57c3c0fe1 100644
+--- a/angr/analyses/decompiler/decompilation_options.py
++++ b/angr/analyses/decompiler/decompilation_options.py
+@@ -103,7 +103,20 @@ options = [
+         clears_cache=False,
+     ),
+ ]
+-
++options_muqi = [(
++    O(
++        "Aggressively remove dead memdefs",
++        "Allow the decompiler to aggressively remove memory definitions (such as stack variables) that are deemed dead."
++        " Generally, enabling this option will generate cleaner pseudocode; However, due to limitations of static "
++        "analysis, angr may miss certain uses to a memory definition, which may cause the removal of a memory "
++        "definition that is actually in use, and consequently lead to incorrect decompilation output.",
++        bool,
++        "clinic",
++        "remove_dead_memdefs",
++        category="Data flows",
++        default_value=False,
++    ), False)
++]
+ # NOTE: if you add a codegen option here, please add it to reapply_options
+ 
+ options_by_category = defaultdict(list)
+diff --git a/angr/analyses/decompiler/decompiler.py b/angr/analyses/decompiler/decompiler.py
+index 315f7e306..9d5de234f 100644
+--- a/angr/analyses/decompiler/decompiler.py
++++ b/angr/analyses/decompiler/decompiler.py
+@@ -16,6 +16,8 @@ from .ailgraph_walker import AILGraphWalker
+ from .condition_processor import ConditionProcessor
+ from .decompilation_options import DecompilationOption
+ from .decompilation_cache import DecompilationCache
++from .decompilation_options import options_muqi
++from ... import muqi
+ 
+ if TYPE_CHECKING:
+     from .peephole_optimizations import PeepholeOptimizationStmtBase, PeepholeOptimizationExprBase
+@@ -42,10 +44,16 @@ class Decompiler(Analysis):
+                  ite_exprs=None,
+                  decompile=True,
+                  regen_clinic=True,
++                 rules_txt=None
+                  ):
++        muqi.decompiler_read_txt = rules_txt
+         self.func = func
+         self._cfg = cfg
+-        self._options = options
++        if options is None:
++            self._options = options_muqi
++        else:
++            self._options = options
++        
+         if optimization_passes is None:
+             self._optimization_passes = get_default_optimization_passes(self.project.arch, self.project.simos.name)
+             l.debug("Get %d optimization passes for the current binary.", len(self._optimization_passes))
+@@ -293,8 +301,24 @@ class Decompiler(Analysis):
+         """
+ 
+         d = { }
++        #muqi block rules
++        temp_rules = [ ]
++        try:
++            with open(muqi.decompiler_read_txt,'r') as muqi_file:
++                temp_rules = muqi_file.readlines()
++        except:
++            pass
++
+         for option, value in options:
+             d[option.param] = value
++            #muqi block rules
++            muqi_set = False
++            for i in range(len(temp_rules)) :  
++                if option.NAME in temp_rules[i]:
++                    muqi_set = True
++            if muqi_set:
++                d[option.param] = not value
++
+         return d
+ 
+ 
+diff --git a/angr/analyses/decompiler/structured_codegen/c.py b/angr/analyses/decompiler/structured_codegen/c.py
+index aaf653e0c..b5da592d1 100644
+--- a/angr/analyses/decompiler/structured_codegen/c.py
++++ b/angr/analyses/decompiler/structured_codegen/c.py
+@@ -17,6 +17,9 @@ from ..region_identifier import MultiNode
+ from ..structurer import (SequenceNode, CodeNode, ConditionNode, ConditionalBreakNode, LoopNode, BreakNode,
+                          SwitchCaseNode, ContinueNode, CascadingConditionNode)
+ from .base import BaseStructuredCodeGenerator, InstructionMapping, PositionMapping, PositionMappingElement
++from .... import muqi
++retval_last_muqi =  None
++muqi_dict_name_type ={}
+ 
+ if TYPE_CHECKING:
+     from angr.knowledge_plugins.variables.variable_manager import VariableManagerInternal
+@@ -260,6 +263,8 @@ class CFunction(CConstruct):  # pylint:disable=abstract-method
+                     yield type_pre_spaces, None
+                 yield name, cvariable
+                 yield type_post, var_type
++                global muqi_dict_name_type
++                muqi_dict_name_type[name] = type_pre + type_post
+             else:
+                 # multiple types...
+                 for i, var_type in enumerate(set(typ for _, typ in cvar_and_vartypes)):
+@@ -328,10 +333,84 @@ class CFunction(CConstruct):  # pylint:disable=abstract-method
+             yield '\n', None
+ 
+         yield indent_str, None
++        #muqi block rules
++        temp_rules = [ ]
++        try:
++            with open(muqi.decompiler_read_txt,'r') as muqi_file:
++                temp_rules = muqi_file.readlines()
++        except:
++            pass
++
++        global muqi_dict_name_type
++        muqi_set = False
++        for i in range(len(temp_rules)) :
++            if "muqi add rule" in temp_rules[i]:
++                muqi_set = True
++        #print(temp_rules)
++        if muqi_set:
++        #added by muqi by determine return type
++            yield "\n/*\n", None
++            for i, (arg_type, arg) in enumerate(zip(self.functy.args, self.arg_list)):
++                if i:
++                    yield ", ", None
++
++                if isinstance(arg, CVariable):
++                    variable = arg.unified_variable if arg.unified_variable is not None else arg.variable
++                    variable_name = variable.name
++                else:
++                    variable_name = arg.c_repr()
++                raw_type_str: str = arg_type.c_repr(name=variable_name)
++                # FIXME: Add a .c_repr_chunks() to SimType so that we no longer need to parse the string output
++                assert variable_name in raw_type_str
++                varname_pos = raw_type_str.rfind(variable_name)
++                type_pre, type_post = raw_type_str[:varname_pos], raw_type_str[varname_pos + len(variable_name):]
++                if type_pre.endswith(" "):
++                    type_pre_spaces = " " * (len(type_pre) - len(type_pre.rstrip(" ")))
++                    type_pre = type_pre.rstrip(" ")
++                else:
++                    type_pre_spaces = ""
++
++                yield type_pre, arg_type
++                if type_pre_spaces:
++                    yield type_pre_spaces, None
++                yield variable_name, arg
++                yield type_post, arg_type
++                '''
++                print(type_pre)
++                print(arg_type)
++                print(type_post)
++                print(type(type_pre))
++                print(type(arg_type))
++                print(type(type_post))
++                print(variable_name)
++                print(arg)
++                print(type(variable_name))
++                print(type(arg))
++                #global muqi_dict_name_type
++                '''
++                muqi_dict_name_type[variable_name] = type_pre + type_post
++
++            yield from self.variable_list_repr_chunks(indent=indent + INDENT_DELTA)
++            if self.statements is not None:
++                yield from self.statements.c_repr_chunks(indent=indent + INDENT_DELTA)
++            yield "\n*/\n", None
++            if retval_last_muqi :
++                yield retval_last_muqi, None
++                yield " ", None
++            else:
++                # return type
++                yield self.functy.returnty.c_repr(name="").strip(" "), None
++                yield " ", None
++        else:
++            yield self.functy.returnty.c_repr(name="").strip(" "), None
++            yield " ", None
++        '''
++        #this is original return type
+         # return type
+         yield self.functy.returnty.c_repr(name="").strip(" "), None
+         yield " ", None
+         # function name
++        '''
+         if self.demangled_name:
+             normalized_name = get_cpp_function_name(self.demangled_name, specialized=False, qualified=False)
+         else:
+@@ -958,7 +1037,26 @@ class CReturn(CStatement):
+             yield "return ", self
+             yield from self.retval.c_repr_chunks()
+             yield ";\n", self
+-
++            '''
++            print(self.retval)
++            print(self.retval.type)
++            print(self.retval.variable)
++            print(self.retval.variable.name)
++            print(type(self.retval.variable.name))
++            print(muqi_dict_name_type)
++            '''
++            global retval_last_muqi
++            if (isinstance( self.retval,CTypeCast)):
++                try:
++                    retval_last_muqi = self.retval.type
++                except:
++                    pass
++            else:
++                try:
++                    retval_last_muqi = muqi_dict_name_type[self.retval.variable.name]
++                except:
++                    retval_last_muqi = self.retval.type
++            #print(retval_last_muqi)  
+ 
+ class CGoto(CStatement):
+ 
+diff --git a/angr/analyses/identifier/custom_callable.py b/angr/analyses/identifier/custom_callable.py
+index 24ac2ed5d..1a1e72b27 100644
+--- a/angr/analyses/identifier/custom_callable.py
++++ b/angr/analyses/identifier/custom_callable.py
+@@ -67,7 +67,7 @@ class IdentifierCallable(object):
+     def get_base_state(self, *args):
+         prototype = self._cc.guess_prototype(args)
+         self._base_state.ip = self._addr
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     prototype=prototype,
+                     cc=self._cc,
+                     base_state=self._base_state,
+@@ -79,7 +79,7 @@ class IdentifierCallable(object):
+         if prototype is None:
+             prototype = self._cc.guess_prototype(args)
+         self._base_state.ip = self._addr
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     cc=self._cc,
+                     prototype=prototype,
+                     base_state=self._base_state,
+diff --git a/angr/callable.py b/angr/callable.py
+index 8205944a8..9dd1e8338 100644
+--- a/angr/callable.py
++++ b/angr/callable.py
+@@ -62,7 +62,7 @@ class Callable(object):
+ 
+     def perform_call(self, *args, prototype=None):
+         prototype = SimCC.guess_prototype(args, prototype or self._func_ty).with_arch(self._project.arch)
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     prototype=prototype,
+                     cc=self._cc,
+                     base_state=self._base_state,
+diff --git a/angr/engines/engine.py b/angr/engines/engine.py
+index 87ac525a9..c4ba08e68 100644
+--- a/angr/engines/engine.py
++++ b/angr/engines/engine.py
+@@ -5,6 +5,8 @@ import threading
+ from typing import Optional
+ import angr
+ 
++from .. import muqi
++
+ from archinfo.arch_soot import SootAddressDescriptor
+ 
+ l = logging.getLogger(name=__name__)
+@@ -123,6 +125,14 @@ class SuccessorsMixin(SimEngine):
+         :param force_addr:  Force execution to pretend that we're working at this concrete address
+         :returns:           A SimSuccessors object categorizing the execution's successor states
+         """
++        #e00038 is the out side address
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++        #with open(state.log_filepath_muqi,'a') as muqi_file:
++            if self.successors is None :
++                old_address = 0xe00038
++            else:
++                old_address = self.successors.addr
++
+         inline = kwargs.pop('inline', False)
+         force_addr = kwargs.pop('force_addr', None)
+ 
+@@ -150,10 +160,18 @@ class SuccessorsMixin(SimEngine):
+             new_state.scratch.executed_pages_set = {addr & ~0xFFF}
+ 
+         self.successors = SimSuccessors(addr, old_state)
+-
++        
+         new_state._inspect('engine_process', when=BP_BEFORE, sim_engine=self, sim_successors=self.successors,
+                            address=addr)
+         self.successors = new_state._inspect_getattr('sim_successors', self.successors)
++
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            if self.successors is None :
++                print('successors transfer:[',hex(old_address),'->','e00038', ']', file=muqi_file)
++            else:
++                print('successors transfer:[',hex(old_address),'->', hex(self.successors.addr) ,']',file=muqi_file)
++            print('parent state is:[', self.state.history.parent,']',file=muqi_file)
++
+         try:
+             self.process_successors(self.successors, **kwargs)
+         except SimException:
+diff --git a/angr/engines/vex/heavy/heavy.py b/angr/engines/vex/heavy/heavy.py
+index 52560f8ce..b552ac48b 100644
+--- a/angr/engines/vex/heavy/heavy.py
++++ b/angr/engines/vex/heavy/heavy.py
+@@ -10,6 +10,7 @@ from ....utils.constants import DEFAULT_STATEMENT
+ from .... import sim_options as o
+ from .... import errors
+ from . import dirty
++from .... import muqi
+ 
+ l = logging.getLogger(__name__)
+ 
+@@ -145,8 +146,33 @@ class HeavyVEXMixin(SuccessorsMixin, ClaripyDataMixin, SimStateStorageMixin, VEX
+             successors.artifacts['irsb_direct_next'] = irsb.direct_next
+             successors.artifacts['irsb_default_jumpkind'] = irsb.jumpkind
+             successors.artifacts['insn_addrs'] = []
+-
+-
++            
++            final_statement = irsb.statements[-1]
++            '''
++            if final_statement.tag == 'Ist_Exit' :
++                exit_jumpkind = irsb.jumpkind if irsb.jumpkind else ""    
++                if exit_jumpkind == "Ijk_Boring":
++            '''
++            loop_bound_cond = False
++            muqi_count = 0
++            muqi_count = self.state.br_instruction_set[hex(irsb.instruction_addresses[-1])] if hex(irsb.instruction_addresses[-1]) in self.state.br_instruction_set else 0
++            if muqi_count >= 2:
++                loop_bound_cond = True
++
++            if loop_bound_cond == True :
++                with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                    print("block range:[",hex(self.state.addr), "->", hex(self.state.addr+self.state.project.factory.block(self.state.addr).vex.size),"]",file=muqi_file)
++                    print('current state is:[', self.state,']',file=muqi_file)
++                    print('In fakeret',file=muqi_file)
++                    print('----dump z3 start----',file=muqi_file)
++                    print('(_ bv0 64)',file=muqi_file)
++                    print('----dump z3 end----',file=muqi_file)
++                successors.all_successors=[]
++                successors.successors=[]
++                successors.flat_successors=[]
++                successors.unsat_successors=[]
++                successors.unconstrained_successors=[]
++                break
+             try:
+                 self.handle_vex_block(irsb)
+             except errors.SimReliftException as e:
+@@ -172,15 +198,89 @@ class HeavyVEXMixin(SuccessorsMixin, ClaripyDataMixin, SimStateStorageMixin, VEX
+             else:
+                 break
+ 
++        if final_statement.tag == 'Ist_Exit' :
++                exit_jumpkind = irsb.jumpkind if irsb.jumpkind else ""
++                if exit_jumpkind == "Ijk_Boring":
++                    #print("In muqi loop bound")
++                    #print(state_succ.br_instruction_set)
++                    if len(list(successors.all_successors)) == 2 and len(list(successors.unsat_successors)) == 0:
++                        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                            if irsb.next.con.value == irsb.addr+irsb.size:
++                                print('In cbranch',file=muqi_file)
++                                print('address added is:[',hex(final_statement.dst.value),']',file=muqi_file)
++                            else: 
++                                print('In cbranch_flip',file=muqi_file)
++                                print('address added is:[',hex(irsb.next.con.value),']',file=muqi_file)
++                            print('----dump z3 start----',file=muqi_file)
++                            print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify( self._analyze_vex_stmt_Exit_guard(final_statement.guard)[0]))),file=muqi_file)
++                            print('----dump z3 end----',file=muqi_file)
++                    elif len(list(successors.all_successors)) == 2 and len(list(successors.unsat_successors)) == 1:
++                        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                            #print(state_succ.br_instruction_set,file=muqi_file)
++                            print('In branch',file=muqi_file)
++                            print('current address is:[', hex(irsb.addr),']',file=muqi_file)
++                            try:
++                                print('address added is:[', hex((successors.successors)[0].addr),']',file=muqi_file)
++                            except:
++                                print('address added is:[ unknown ]',file=muqi_file)
++                            
++                    for state_succ in list(successors.all_successors):
++                        if hex(irsb.instruction_addresses[-1]) in state_succ.br_instruction_set:
++                            state_succ.br_instruction_set[hex(irsb.instruction_addresses[-1])] += 1
++                            
++                        else:
++                            state_succ.br_instruction_set[hex(irsb.instruction_addresses[-1])] = 1
++
++        if final_statement.tag != 'Ist_AbiHint' and final_statement.tag != 'Ist_Exit' :
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In branch',file=muqi_file)
++                print('current address is:[', hex(irsb.addr),']',file=muqi_file)
++                try:
++                    print('address added is:[', hex(irsb.next.con.value),']',file=muqi_file)
++                    #print(irsb.next)
++                    #print(type(irsb.next))
++                except:
++                    print('address added is:[ unknown ]',file=muqi_file)            
++            for state_succ in list(successors.all_successors):
++                if hex(irsb.instruction_addresses[-1]) in state_succ.br_instruction_set:
++                    #state_succ.br_instruction_set[final_statement] += 1
++                    state_succ.br_instruction_set[hex(irsb.instruction_addresses[-1])] += 1
++                    
++                else:
++                    #state_succ.br_instruction_set[final_statement] = 1
++                    state_succ.br_instruction_set[hex(irsb.instruction_addresses[-1])] = 1
++
+         # do return emulation and calless stuff
+         for exit_state in list(successors.all_successors):
+             exit_jumpkind = exit_state.history.jumpkind if exit_state.history.jumpkind else ""
+ 
+             if o.CALLLESS in self.state.options and exit_jumpkind == "Ijk_Call":
++                '''
+                 exit_state.registers.store(
+                     exit_state.arch.ret_offset,
+                     exit_state.solver.Unconstrained('fake_ret_value', exit_state.arch.bits)
+                 )
++                
++                #muqi, we used to store 0 in register as return value
++                exit_state.registers.store(
++                    exit_state.arch.ret_offset,
++                    #muqi_change here
++                    #make internal/external call return 0.
++                    claripy.BVV(0, exit_state.arch.bits),
++                   # exit_state.solver.Unconstrained(
++                   #     "fake_ret_value", exit_state.arch.bits
++                   # ),
++                )
++                '''
++                exit_state.registers.store(
++                    exit_state.arch.ret_offset,
++                    #muqi_change here
++                    #make internal/external call return sum of arguments.
++                    exit_state.return_result,
++                   # exit_state.solver.Unconstrained(
++                   #     "fake_ret_value", exit_state.arch.bits
++                   # ),
++                )
+                 exit_state.scratch.target = exit_state.solver.BVV(
+                     successors.addr + irsb.size, exit_state.arch.bits
+                 )
+diff --git a/angr/engines/vex/lifter.py b/angr/engines/vex/lifter.py
+index a91eb041a..bb105a066 100644
+--- a/angr/engines/vex/lifter.py
++++ b/angr/engines/vex/lifter.py
+@@ -239,6 +239,18 @@ class VEXLifter(SimEngineBase):
+ 
+         # phase 5: call into pyvex
+         l.debug("Creating IRSB of %s at %#x", arch, addr)
++        '''
++        print("in lift vex:")
++        print(hex(addr))
++        print(hex(thumb))
++        print(offset)
++        print(size)
++        print(collect_data_refs)
++        print(cross_insn_opt)
++        print(strict_block_end)
++        print(skip_stmts)
++        print(buff)
++        '''
+         try:
+             for subphase in range(2):
+ 
+diff --git a/angr/engines/vex/light/light.py b/angr/engines/vex/light/light.py
+index a52265fc3..ce8afbb03 100644
+--- a/angr/engines/vex/light/light.py
++++ b/angr/engines/vex/light/light.py
+@@ -6,6 +6,11 @@ import pyvex
+ from ...engine import SimEngineBase
+ from ....utils.constants import DEFAULT_STATEMENT
+ 
++from .... import muqi
++import claripy
++#from claripy import claripy.backends
++from claripy.ast.bv import BV
++
+ l = logging.getLogger(name=__name__)
+ 
+ #pylint:disable=arguments-differ,unused-argument,no-self-use
+@@ -165,8 +170,93 @@ class VEXMixin(SimEngineBase):
+     def _handle_vex_stmt_NoOp(self, stmt):
+         pass
+ 
++    def muqi_get_function_name(self,string_path_binary, string_path_binary_function):
++        '''
++        external_function_read_txt = "/tmp/call_count_Unknown_angr_numargs.txt"
++        external_function_call_count_path = "/tmp/call_count_Unknown_Unkown_angr_args.txt"
++        '''
++        print("Inside muqi_get_function_name")
++        program_name = string_path_binary.replace("_angr_numargs.txt","")
++        program_function_name = string_path_binary_function.replace("_angr_args.txt","")
++        print(program_function_name)
++        print(program_name)
++        function_name = program_function_name.replace(program_name+"_","")
++
++        return function_name
++
+     def _handle_vex_stmt_AbiHint(self, stmt):
+-        pass
++        if self.irsb.jumpkind == "Ijk_Ret" :
++            #print("muqi test return")
++            #print(self.state.regs.rax)
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In ret',file=muqi_file)
++                print('----dump z3 start----',file=muqi_file)
++                print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(self.state.regs.rax))),file=muqi_file)
++                print('----dump z3 end----',file=muqi_file)
++        
++        elif self.irsb.jumpkind == "Ijk_Call" :
++            x86_linux_calling_convention = [
++                self.state.regs.rdi,
++                self.state.regs.rsi,
++                self.state.regs.rdx,
++                self.state.regs.rcx,
++                self.state.regs.r8,
++                self.state.regs.r9,
++                self.state.regs.mm0,
++                self.state.regs.mm1,
++                self.state.regs.mm2,
++                self.state.regs.mm3,
++                self.state.regs.mm4,
++                self.state.regs.mm5,
++                self.state.regs.mm6,
++                self.state.regs.mm7,
++            ]
++            with open(muqi.external_function_call_count_path,'a') as muqi_file:
++                function_name = self.muqi_get_function_name(muqi.external_function_read_txt,muqi.external_function_call_count_path)
++                try:
++                    read_binary_file = open(muqi.external_function_read_txt,"r")
++                    binary_function_call = read_binary_file.readlines()
++                    read_binary_file.close()
++
++                except:
++                    binary_function_call = []
++                #'''
++                for i in range(len(binary_function_call)):
++                    func_addr_num =binary_function_call[i][:-1].split("|")
++
++                    #nia here contains the address of call function
++                    if isinstance(stmt.nia,pyvex.expr.Const):
++                        if func_addr_num[0] == function_name:
++                            print("muqi_test: func_addr_num1")
++                            print(func_addr_num)
++                            print(stmt.nia.con.__str__())
++                            self.irsb.pp()
++
++                            if func_addr_num[2].replace("0x","0x0000000000") == stmt.nia.con.__str__():
++                                '''
++                                print("muqi_test: func_addr_num2")
++                                print(func_addr_num)
++                                print(func_addr_num[1],file=muqi_file)
++                                '''
++                                if int(func_addr_num[3]) > 0:
++                                    call_return_result = claripy.BVV(0, 64)
++                                    pointer_addr = func_addr_num[4].split(",")
++                                    for i_calling_convention in range(int(func_addr_num[3])):
++                                        if pointer_addr[i_calling_convention] == "999" :
++                                            continue
++                                        if pointer_addr[i_calling_convention] == "0" :
++                                            call_return_result += x86_linux_calling_convention[i_calling_convention]
++                                            print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(x86_linux_calling_convention[i_calling_convention]))),file=muqi_file) 
++                                        else:
++                                            try:
++                                                call_return_result += self.state.memory.load(x86_linux_calling_convention[i_calling_convention], size = 8,endness = self.project.arch.memory_endness)
++                                            except:
++                                                call_return_result += self.state.registers.load(x86_linux_calling_convention[i_calling_convention], size = 8)
++
++                                    call_return_result = call_return_result[7:0]
++                                    call_return_result = call_return_result.zero_extend(64-8)
++                                    self.state.return_result = call_return_result
++            
+ 
+     def _handle_vex_stmt_MBE(self, stmt):
+         pass
+@@ -203,6 +293,27 @@ class VEXMixin(SimEngineBase):
+ 
+     def _analyze_vex_stmt_Exit_guard(self, *a, **kw): return self. _handle_vex_expr(*a, **kw)
+     def _handle_vex_stmt_Exit(self, stmt: pyvex.stmt.Exit):
++        if self.irsb.jumpkind == "Ijk_Ret" :
++            pass
++        elif self.irsb.jumpkind == "Ijk_Boring" :
++            '''
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                
++                if self.irsb.next.con.value == self.irsb.addr+self.irsb.size:
++                    print('In cbranch',file=muqi_file)
++                    print('address added is:[',hex(stmt.dst.value),']',file=muqi_file)
++                else:
++                    print('In cbranch_flip',file=muqi_file)
++                    print('address added is:[',hex(self.irsb.next.con.value),']',file=muqi_file)
++                print('----dump z3 start----',file=muqi_file)
++                print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify( self._analyze_vex_stmt_Exit_guard(stmt.guard)[0]))),file=muqi_file)
++                print('----dump z3 end----',file=muqi_file)
++            '''
++            pass
++        elif self.irsb.jumpkind == "Ijk_Call" :
++            pass
++        else :
++            pass
+         self._perform_vex_stmt_Exit(
+             self._analyze_vex_stmt_Exit_guard(stmt.guard),
+             self._handle_vex_const(stmt.dst),
+@@ -441,12 +552,28 @@ class VEXMixin(SimEngineBase):
+         self.irsb = irsb
+         self.tmps = [None]*self.irsb.tyenv.types_used
+ 
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            #with open(self.state.log_filepath_muqi,'a') as muqi_file:
++                print("block range:[",hex(irsb.addr), "->", hex(irsb.addr +irsb.size),"]",file=muqi_file)
++                print('current state is:[', self.state,']',file=muqi_file)
++        
++        final_statement = irsb.statements[-1]
++
+         for stmt_idx, stmt in enumerate(irsb.statements):
+             self.stmt_idx = stmt_idx
+             self._handle_vex_stmt(stmt)
+         self.stmt_idx = DEFAULT_STATEMENT
+         self._handle_vex_defaultexit(irsb.next, irsb.jumpkind)
+-
++        '''
++        if final_statement.tag != 'Ist_AbiHint' and final_statement.tag != 'Ist_Exit' :
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In branch',file=muqi_file)
++                print('current address is:[', hex(irsb.addr),']',file=muqi_file)
++                try:
++                    print('address added is:[', hex(irsb.next.con.value),']',file=muqi_file)
++                except:
++                    print('address added is:[ unknown ]',file=muqi_file)
++        '''
+     def _handle_vex_defaultexit(self, expr: Optional[pyvex.expr.IRExpr], jumpkind: str):
+         self._perform_vex_defaultexit(
+             self._analyze_vex_defaultexit(expr) if expr is not None else None,
+diff --git a/angr/exploration_techniques/loop_seer.py b/angr/exploration_techniques/loop_seer.py
+index db6e41be3..daf66e713 100644
+--- a/angr/exploration_techniques/loop_seer.py
++++ b/angr/exploration_techniques/loop_seer.py
+@@ -3,7 +3,7 @@ import logging
+ from . import ExplorationTechnique
+ from ..knowledge_base import KnowledgeBase
+ from ..knowledge_plugins.functions import Function
+-
++from ..import muqi
+ 
+ l = logging.getLogger(name=__name__)
+ 
+@@ -157,7 +157,21 @@ class LoopSeer(ExplorationTechnique):
+                     else:
+                         if succ_state.addr in succ_state.loop_data.back_edge_trip_counts:
+                             counts = succ_state.loop_data.back_edge_trip_counts[succ_state.addr][-1]
+-                    if counts > self.bound:
++                    
++                    muqi_count = 0
++                    muqi_count_hash = {}
++                    for addr in succ_state.history.bbl_addrs:
++                        if addr in muqi_count_hash:
++                            muqi_count_hash[addr] += 1
++                        else:
++                            muqi_count_hash[addr] = 1
++                    if succ_state.addr in muqi_count_hash:
++                        muqi_count_hash[addr] += 1
++                    else:
++                        muqi_count_hash[addr] = 1
++                    muqi_count = max(muqi_count_hash.values())
++
++                    if counts > self.bound or muqi_count > self.bound:
+                         if self.bound_reached is not None:
+                             # We want to pass self to modify the LoopSeer state if needed
+                             # Users can modify succ_state in the handler to implement their own logic
+@@ -166,6 +180,21 @@ class LoopSeer(ExplorationTechnique):
+                         else:
+                             # Remove the state from the successors object
+                             # This state is going to be filtered by the self.filter function
++                            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                                #muqi add fake return node here for branch
++                                print('successors transfer:[',hex(state.addr),'->', hex(succ_state.addr) ,']',file=muqi_file)
++                                print('parent state is:[', succ_state.history,']',file=muqi_file)
++                                print("block range:[",hex(succ_state.addr), "->", hex(succ_state.addr +succ_state.project.factory.block(succ_state.addr).vex.size),"]",file=muqi_file)
++                                print('current state is:[', succ_state,']',file=muqi_file)
++                                print('In fakeret',file=muqi_file)
++                                print('----dump z3 start----',file=muqi_file)
++                                print('; benchmark',file=muqi_file)
++                                print('(_ bv0 64)',file=muqi_file)
++                                print('----dump z3 end----',file=muqi_file)
++                                
++			                
++
++
+                             self.cut_succs.append(succ_state)
+ 
+                 l.debug("%s back edge based trip counts %s", state, state.loop_data.back_edge_trip_counts)
+@@ -190,7 +219,13 @@ class LoopSeer(ExplorationTechnique):
+                         succ_state.loop_data.back_edge_trip_counts[node.addr].append(0)
+ 
+                 # save info about current active loop for the succ state
+-                succ_state.loop_data.header_trip_counts[header].append(1)
++                #succ_state.loop_data.header_trip_counts[header].append(1)
++                #muqi we change here for the new header count method
++                if not succ_state.loop_data.header_trip_counts[header]:
++                    succ_state.loop_data.header_trip_counts[header].append(1)
++                else:
++                    succ_state.loop_data.header_trip_counts[header][-1]  += 1
++
+                 succ_state.loop_data.current_loop.append((loop, exits))
+         return succs
+ 
+diff --git a/angr/factory.py b/angr/factory.py
+index 0b933232d..d647381dd 100644
+--- a/angr/factory.py
++++ b/angr/factory.py
+@@ -9,6 +9,7 @@ from .callable import Callable
+ from .errors import AngrAssemblyError
+ from .engines import UberEngine, ProcedureEngine, SimEngineConcrete
+ 
++from . import muqi
+ 
+ l = logging.getLogger(name=__name__)
+ 
+@@ -108,7 +109,7 @@ class AngrObjectFactory:
+         """
+         return self.project.simos.state_full_init(**kwargs)
+ 
+-    def call_state(self, addr, *args, **kwargs):
++    def call_state(self,  input_txt, addr, *args, **kwargs):
+         """
+         Returns a state object initialized to the start of a given function, as if it were called with given parameters.
+ 
+@@ -150,6 +151,7 @@ class AngrObjectFactory:
+         set alloc_base to point to somewhere other than the stack, set grow_like_stack to False so that sequencial
+         allocations happen at increasing addresses.
+         """
++        muqi.programe_function_name_txt = input_txt
+         return self.project.simos.state_call(addr, *args, **kwargs)
+ 
+     def simulation_manager(self, thing: Optional[Union[List[SimState], SimState]]=None, **kwargs) -> 'SimulationManager':
+diff --git a/angr/sim_manager.py b/angr/sim_manager.py
+index 2b8a67e9c..332e62803 100644
+--- a/angr/sim_manager.py
++++ b/angr/sim_manager.py
+@@ -15,7 +15,7 @@ from .sim_state import SimState
+ from .state_hierarchy import StateHierarchy
+ from .errors import AngrError, SimUnsatError, SimulationManagerError
+ from .sim_options import LAZY_SOLVES
+-
++from . import muqi
+ l = logging.getLogger(name=__name__)
+ 
+ 
+@@ -79,6 +79,9 @@ class SimulationManager:
+             **kwargs):
+         super().__init__()
+ 
++        self.jumpout_edge = []
++        self.abort_edge = []
++
+         self._project = project
+         self.completion_mode = completion_mode
+         self._errored = []
+@@ -279,7 +282,8 @@ class SimulationManager:
+ 
+         return self
+ 
+-    def run(self, stash='active', n=None, until=None, **kwargs):
++    def run(self, read_args_txt = "/tmp/call_count_Unknown_angr_numargs.txt",
++                 call_count_path = "/tmp/call_count_Unknown_Unkown_angr_args.txt",stash='active', n=None, until=None, **kwargs):
+         """
+         Run until the SimulationManager has reached a completed state, according to
+         the current exploration techniques. If no exploration techniques that define a completion
+@@ -293,6 +297,8 @@ class SimulationManager:
+         :return:            The simulation manager, for chaining.
+         :rtype:             SimulationManager
+         """
++        muqi.external_function_read_txt = read_args_txt
++        muqi.external_function_call_count_path = call_count_path
+         for _ in (itertools.count() if n is None else range(0, n)):
+             if not self.complete() and self._stashes[stash]:
+                 self.step(stash=stash, **kwargs)
+@@ -415,12 +421,115 @@ class SimulationManager:
+             return step_func(self)
+         return self
+ 
++    #jumpout_edge = []
++    def input_jumpout_edge(self, input_jumpout_list):
++        self.jumpout_edge = input_jumpout_list
++    def input_abort_edge(self, input_abort_list):
++        self.abort_edge = input_abort_list
++
+     def step_state(self, state, successor_func=None, **run_args):
+         """
+         Don't use this function manually - it is meant to interface with exploration techniques.
+         """
+         try:
+             successors = self.successors(state, successor_func=successor_func, **run_args)
++            
++            for exit_state in list(successors.all_successors):
++                exit_jumpkind = exit_state.history.jumpkind
++
++                if exit_jumpkind is None:
++                    exit_jumpkind = ""
++
++                cond1 = exit_jumpkind == "Ijk_Boring" and exit_state.addr in self.jumpout_edge
++                #defaultly, we do not need to h
++                cond2 = False
++                if exit_state.scratch.irsb :
++                    try:
++                        call_address = exit_state.scratch.irsb.next.con.value
++                        cond2 = exit_state.scratch.irsb.jumpkind == "Ijk_Call" and call_address in self.abort_edge
++                    except:
++                        pass
++
++                if cond1==True or cond2 ==True :
++                    successors.all_successors.remove(exit_state)
++                
++                    with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                        print('successors transfer:[',hex(state.addr),'->', hex(exit_state.addr) ,']',file=muqi_file)
++                        print('parent state is:[', exit_state.history,']',file=muqi_file)
++                        if cond1 == True:
++                            #muqi, since we use transition_graph in D-helix to identify the node's range, the jmp out address cannot be in this function's transition_graph
++                            #hence we give node size as 0
++                            print("block range:[",hex(exit_state.addr), "->", hex(exit_state.addr),"]",file=muqi_file)
++                        if cond2 == True:
++                            #hex(succ_state.addr +succ_state.project.factory.block(succ_state.addr).vex.size)
++                            print("block range:[",hex(exit_state.addr), "->", hex(exit_state.addr+exit_state.project.factory.block(exit_state.addr).vex.size),"]",file=muqi_file)
++                        print('current state is:[', exit_state,']',file=muqi_file)
++                        print('In fakeret',file=muqi_file)
++                        print('----dump z3 start----',file=muqi_file)
++                        print('(_ bv0 64)',file=muqi_file)
++                        print('----dump z3 end----',file=muqi_file)
++
++            for exit_state in list(successors.successors):
++                exit_jumpkind = exit_state.history.jumpkind
++                if exit_jumpkind is None:
++                    exit_jumpkind = ""
++                cond1 = exit_jumpkind == "Ijk_Boring" and exit_state.addr in self.jumpout_edge
++                cond2 = False
++                if exit_state.scratch.irsb :
++                    try:
++                        call_address = exit_state.scratch.irsb.next.con.value
++                        cond2 = exit_state.scratch.irsb.jumpkind == "Ijk_Call" and call_address in self.abort_edge
++                    except:
++                        pass
++                if cond1==True or cond2 ==True :
++                   successors.successors.remove(exit_state)
++
++            for exit_state in list(successors.flat_successors):
++                exit_jumpkind = exit_state.history.jumpkind
++                if exit_jumpkind is None:
++                    exit_jumpkind = ""
++                cond1 = exit_jumpkind == "Ijk_Boring" and exit_state.addr in self.jumpout_edge
++                cond2 = False
++                if exit_state.scratch.irsb :
++                    try:
++                        call_address = exit_state.scratch.irsb.next.con.value
++                        cond2 = exit_state.scratch.irsb.jumpkind == "Ijk_Call" and call_address in self.abort_edge
++                    except:
++                        pass
++                if cond1==True or cond2 ==True :
++                   successors.flat_successors.remove(exit_state)
++
++            for exit_state in list(successors.unsat_successors):
++                exit_jumpkind = exit_state.history.jumpkind
++                if exit_jumpkind is None:
++                    exit_jumpkind = ""
++                cond1 = exit_jumpkind == "Ijk_Boring" and exit_state.addr in self.jumpout_edge
++                cond2 = False
++                if exit_state.scratch.irsb :
++                    try:
++                        call_address = exit_state.scratch.irsb.next.con.value
++                        cond2 = exit_state.scratch.irsb.jumpkind == "Ijk_Call" and call_address in self.abort_edge
++                    except:
++                        pass
++                if cond1==True or cond2 ==True :
++                   successors.unsat_successors.remove(exit_state)
++        
++            for exit_state in list(successors.unconstrained_successors):
++                exit_jumpkind = exit_state.history.jumpkind
++                if exit_jumpkind is None:
++                    exit_jumpkind = ""
++                cond1 = exit_jumpkind == "Ijk_Boring" and exit_state.addr in self.jumpout_edge
++                cond2 = False
++                if exit_state.scratch.irsb :
++                    try:
++                        call_address = exit_state.scratch.irsb.next.con.value
++                        cond2 = exit_state.scratch.irsb.jumpkind == "Ijk_Call" and call_address in self.abort_edge
++                    except:
++                        pass
++                if cond1==True or cond2 ==True :
++                   successors.unconstrained_successors.remove(exit_state)
++
++
+             stashes = {None: successors.flat_successors,
+                        'unsat': successors.unsat_successors,
+                        'unconstrained': successors.unconstrained_successors}
+diff --git a/angr/sim_state.py b/angr/sim_state.py
+index 6815b3c10..a5c258cf6 100644
+--- a/angr/sim_state.py
++++ b/angr/sim_state.py
+@@ -102,6 +102,8 @@ class SimState(PluginHub):
+         # Java & Java JNI
+         self._is_java_project = self.project and self.project.is_java_project
+         self._is_java_jni_project = self.project and self.project.is_java_jni_project
++        self.br_instruction_set = {}
++        self.return_result = claripy.BVV(0, 64)
+ 
+         # Arch
+         if self._is_java_jni_project:
+@@ -633,6 +635,7 @@ class SimState(PluginHub):
+         state.uninitialized_access_handler = self.uninitialized_access_handler
+         state._special_memory_filler = self._special_memory_filler
+         state.ip_constraints = self.ip_constraints
++        state.br_instruction_set = self.br_instruction_set.copy()
+ 
+         return state
+ 

@@ -1,0 +1,29 @@
+DWARF:true
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+sborrow

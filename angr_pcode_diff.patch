@@ -1,0 +1,881 @@
+diff --git a/angr/analyses/cfg/cfg_emulated.py b/angr/analyses/cfg/cfg_emulated.py
+index 5d41158f6..44abf3466 100644
+--- a/angr/analyses/cfg/cfg_emulated.py
++++ b/angr/analyses/cfg/cfg_emulated.py
+@@ -968,6 +968,7 @@ class CFGEmulated(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-metho
+             state = self._initial_state.copy()
+             state.history.jumpkind = jumpkind
+             self._reset_state_mode(state, 'fastpath')
++
+             state._ip = state.solver.BVV(ip, self.project.arch.bits)
+ 
+         if jumpkind is not None:
+diff --git a/angr/analyses/identifier/custom_callable.py b/angr/analyses/identifier/custom_callable.py
+index b33a33aba..25a844043 100644
+--- a/angr/analyses/identifier/custom_callable.py
++++ b/angr/analyses/identifier/custom_callable.py
+@@ -64,7 +64,7 @@ class IdentifierCallable(object):
+ 
+     def get_base_state(self, *args):
+         self._base_state.ip = self._addr
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     cc=self._cc,
+                     base_state=self._base_state,
+                     ret_addr=self._deadend_addr,
+@@ -73,7 +73,7 @@ class IdentifierCallable(object):
+ 
+     def perform_call(self, *args):
+         self._base_state.ip = self._addr
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     cc=self._cc,
+                     base_state=self._base_state,
+                     ret_addr=self._deadend_addr,
+diff --git a/angr/callable.py b/angr/callable.py
+index e2c5c131d..355a34261 100644
+--- a/angr/callable.py
++++ b/angr/callable.py
+@@ -56,7 +56,7 @@ class Callable(object):
+             return None
+ 
+     def perform_call(self, *args):
+-        state = self._project.factory.call_state(self._addr, *args,
++        state = self._project.factory.call_state("/tmp/angr_Unknown.txt",self._addr, *args,
+                     cc=self._cc,
+                     base_state=self._base_state,
+                     ret_addr=self._deadend_addr,
+diff --git a/angr/engines/__init__.py b/angr/engines/__init__.py
+index f37dbd482..4977ea815 100644
+--- a/angr/engines/__init__.py
++++ b/angr/engines/__init__.py
+@@ -28,6 +28,12 @@ class UberEngine(
+     pass
+ 
+ 
++#from .pcode import HeavyPcodeMixin
++
++#class UberEnginePcode(SimEngineFailure, SimEngineSyscall, HooksMixin, HeavyPcodeMixin):  # pylint:disable=abstract-method
++#   pass
++
++
+ try:
+     from .pcode import HeavyPcodeMixin
+ 
+diff --git a/angr/engines/engine.py b/angr/engines/engine.py
+index fc05a7c9f..93d9a122b 100644
+--- a/angr/engines/engine.py
++++ b/angr/engines/engine.py
+@@ -3,6 +3,9 @@ import logging
+ import threading
+ from typing import Optional
+ import angr
++from .. import muqi
++
++import traceback
+ 
+ from archinfo.arch_soot import SootAddressDescriptor
+ 
+@@ -88,7 +91,7 @@ class TLSProperty:
+     def __delete__(self, instance):
+         delattr(instance._TLSMixin__local, self.name)
+ 
+-
++counter = 0
+ class SuccessorsMixin(SimEngine):
+     """
+     A mixin for SimEngine which implements ``process`` to perform common operations related to symbolic execution
+@@ -102,6 +105,7 @@ class SuccessorsMixin(SimEngine):
+ 
+     __tls = ('successors',)
+ 
++    counter = 0
+     def process(self, state, *args, **kwargs):
+         """
+         Perform execution with a state.
+@@ -115,10 +119,26 @@ class SuccessorsMixin(SimEngine):
+         :param force_addr:  Force execution to pretend that we're working at this concrete address
+         :returns:           A SimSuccessors object categorizing the execution's successor states
+         """
++        #e00038 is the out side address
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            if self.successors is None :
++                old_address = 0xe00038                
++            else:
++                old_address = self.successors.addr
++
+         inline = kwargs.pop('inline', False)
+         force_addr = kwargs.pop('force_addr', None)
+ 
+         ip = state._ip
++        
++        global counter
++        if __debug__ and counter >2 :
++            #print(traceback.format_exception())
++            print("ip2 type is: %s", type(ip))
++            print(ip)
++            print("state type is: %s", type(state))
++
++        counter += 1
+         addr = (ip if isinstance(ip, SootAddressDescriptor) else state.solver.eval(ip)) \
+             if force_addr is None else force_addr
+ 
+@@ -140,11 +160,23 @@ class SuccessorsMixin(SimEngine):
+         new_state.history.recent_bbl_addrs.append(addr)
+         if new_state.arch.unicorn_support:
+             new_state.scratch.executed_pages_set = {addr & ~0xFFF}
++        
++        
+ 
++        #here we change the successor by addr
+         self.successors = SimSuccessors(addr, old_state)
+ 
+         new_state._inspect('engine_process', when=BP_BEFORE, sim_engine=self, sim_successors=self.successors, address=addr)
+         self.successors = new_state._inspect_getattr('sim_successors', self.successors)
++        
++
++        
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            if self.successors is None :
++                print('successors transfer:[',hex(old_address),'->','e00038', ']', file=muqi_file)
++            else:
++                print('successors transfer:[',hex(old_address),'->', hex(self.successors.addr) ,']',file=muqi_file)
++            print('parent state is:[', self.state.history.parent,']',file=muqi_file)
+         try:
+             self.process_successors(self.successors, **kwargs)
+         except SimException:
+@@ -154,7 +186,8 @@ class SuccessorsMixin(SimEngine):
+ 
+         new_state._inspect('engine_process', when=BP_AFTER, sim_successors=self.successors, address=addr)
+         self.successors = new_state._inspect_getattr('sim_successors', self.successors)
+-
++        
++        
+         # downsizing
+         if new_state.supports_inspect:
+             new_state.inspect.downsize()
+diff --git a/angr/engines/pcode/emulate.py b/angr/engines/pcode/emulate.py
+index ad99766fb..f7e341937 100644
+--- a/angr/engines/pcode/emulate.py
++++ b/angr/engines/pcode/emulate.py
+@@ -3,6 +3,7 @@ from typing import Union
+ 
+ from pypcode import OpCode, Varnode, PcodeOp, Translation
+ import claripy
++#from claripy import claripy.backends
+ from claripy.ast.bv import BV
+ 
+ from ..engine import SimEngineBase
+@@ -10,6 +11,8 @@ from ...utils.constants import DEFAULT_STATEMENT
+ from .lifter import IRSB
+ from .behavior import OpBehavior
+ 
++from ... import muqi
++
+ l = logging.getLogger(__name__)
+ 
+ class PcodeEmulatorMixin(SimEngineBase):
+@@ -77,6 +80,8 @@ class PcodeEmulatorMixin(SimEngineBase):
+             fallthru_addr = ins.address.offset + ins.length
+ 
+         if not self.state.scratch.exit_handled:
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In handle_pcode_block',file=muqi_file)
+             self.successors.add_successor(
+                 self.state,
+                 fallthru_addr,
+@@ -92,6 +97,7 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         assert self._current_behavior is not None
+ 
++
+         if self._current_behavior.is_special:
+             self._special_op_handlers[self._current_behavior.opcode]()
+         elif self._current_behavior.is_unary:
+@@ -157,7 +163,7 @@ class PcodeEmulatorMixin(SimEngineBase):
+         value = self._adjust_value_size(varnode.size*8, value)
+         assert varnode.size*8 == value.size()
+ 
+-        l.debug("Storing %s %x %s %d", space_name, varnode.offset, value, varnode.size)
++        l.warning("Storing %s %x %s %d", space_name, varnode.offset, value, varnode.size)
+         if space_name == "register":
+             self.state.registers.store(
+                 self._map_register_name(varnode), value, size=varnode.size
+@@ -167,7 +173,7 @@ class PcodeEmulatorMixin(SimEngineBase):
+             self._pcode_tmps[varnode.offset] = value
+ 
+         elif space_name in ("ram", "mem"):
+-            l.debug("Storing %s to offset %s", value, varnode.offset)
++            l.warning("Storing %s to offset %s", value, varnode.offset)
+             self.state.memory.store(varnode.offset, value, endness=self.project.arch.memory_endness)
+ 
+         else:
+@@ -185,7 +191,7 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         space_name = varnode.space.name
+         size = varnode.size
+-        l.debug("Loading %s - %x x %d", space_name, varnode.offset, size)
++        l.warning("Loading %s - %x x %d", space_name, varnode.offset, size)
+         if space_name == "const":
+             return claripy.BVV(varnode.offset, size*8)
+         elif space_name == "register":
+@@ -197,7 +203,7 @@ class PcodeEmulatorMixin(SimEngineBase):
+             return self._pcode_tmps[varnode.offset]
+         elif space_name in ("ram", "mem"):
+             val = self.state.memory.load(varnode.offset, endness=self.project.arch.memory_endness, size=size)
+-            l.debug("Loaded %s from offset %s", val, varnode.offset)
++            l.warning("Loaded %s from offset %s", val, varnode.offset)
+             return val
+         else:
+             raise NotImplementedError()
+@@ -207,11 +213,11 @@ class PcodeEmulatorMixin(SimEngineBase):
+         Execute the unary behavior of the current op.
+         """
+         in1 = self._get_value(self._current_op.inputs[0])
+-        l.debug("in1 = %s", in1)
++        l.warning("in1 = %s", in1)
+         out = self._current_behavior.evaluate_unary(
+             self._current_op.output.size, self._current_op.inputs[0].size, in1
+         )
+-        l.debug("out unary = %s", out)
++        l.warning("out unary = %s", out)
+         self._set_value(self._current_op.output, out)
+ 
+     def _execute_binary(self) -> None:
+@@ -220,12 +226,12 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         in1 = self._get_value(self._current_op.inputs[0])
+         in2 = self._get_value(self._current_op.inputs[1])
+-        l.debug("in1 = %s", in1)
+-        l.debug("in2 = %s", in2)
++        l.warning("in1 = %s", in1)
++        l.warning("in2 = %s", in2)
+         out = self._current_behavior.evaluate_binary(
+             self._current_op.output.size, self._current_op.inputs[0].size, in1, in2
+         )
+-        l.debug("out binary = %s", out)
++        l.warning("out binary = %s", out)
+         self._set_value(self._current_op.output, out)
+ 
+     def _execute_load(self) -> None:
+@@ -255,12 +261,22 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         Execute a p-code branch operation.
+         """
++        if __debug__:
++            l.warning("In branch")
++            l.warning("current state is %s", self.state)
++            l.warning("parent state is %s", self.state.history.parent)
+         dest_addr = self._current_op.inputs[0].get_addr()
+         if dest_addr.is_constant:
+             raise NotImplementedError("p-code relative branch not supported yet")
+ 
+         self.state.scratch.exit_handled = True
+         expr = dest_addr.offset
++        
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('In branch',file=muqi_file)
++            print('current address is:[', hex(self.successors.addr),']',file=muqi_file)
++            print('address added is:[', hex(expr),']',file=muqi_file)
++        
+         self.successors.add_successor(
+             self.state,
+             expr,
+@@ -274,12 +290,36 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         Execute a p-code conditional branch operation.
+         """
++        if __debug__:
++            l.warning("In cbranch")
++            l.warning("current state is %s", self.state)
++            l.warning("parent state is %s", self.state.history.parent)
++
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('In cbranch',file=muqi_file)
++
+         cond = self._get_value(self._current_op.inputs[1])
++
++
+         dest_addr = self._current_op.inputs[0].get_addr()
+         if dest_addr.is_constant:
+             raise NotImplementedError("p-code relative branch not supported yet")
+ 
+         exit_state = self.state.copy()
++
++        if __debug__:
++            l.warning("successor added is %s", str(hex(dest_addr.offset)))
++        
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('address added is:[',hex(dest_addr.offset),']',file=muqi_file)
++        if __debug__:
++            l.warning('state A is %s', exit_state)
++
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('----dump z3 start----',file=muqi_file)
++            print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(cond == 0))),file=muqi_file)
++            print('----dump z3 end----',file=muqi_file)
++
+         self.successors.add_successor(
+             exit_state,
+             dest_addr.offset,
+@@ -290,6 +330,8 @@ class PcodeEmulatorMixin(SimEngineBase):
+         )
+ 
+         cont_state = self.state
++        if __debug__:
++            l.warning('state B is %s', cont_state)
+         cont_condition = cond == 0
+         cont_state.add_constraints(cont_condition)
+         cont_state.scratch.guard = claripy.And(
+@@ -301,6 +343,14 @@ class PcodeEmulatorMixin(SimEngineBase):
+         Execute a p-code return operation.
+         """
+         self.state.scratch.exit_handled = True
++        if __debug__:
++            l.warning('state return is %s',self.state.regs.eax)
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('In ret',file=muqi_file)
++            print('----dump z3 start----',file=muqi_file)
++            print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(self.state.regs.rax))),file=muqi_file)
++            print('----dump z3 end----',file=muqi_file)
++            
+         self.successors.add_successor(
+             self.state,
+             self.state.regs.ip,
+@@ -316,6 +366,20 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         self.state.scratch.exit_handled = True
+         expr = self._get_value(self._current_op.inputs[0])
++        if __debug__:
++            l.warning(expr)
++            l.warning(type(expr))
++            l.warning(self.state.scratch.ins_addr)
++            l.warning("In branchind")
++            l.warning("current state is %s", self.state)
++            l.warning("parent state is %s", self.state.history.parent)
++        
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('In branchind',file=muqi_file)
++            print('----dump z3 start----',file=muqi_file)
++            print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(expr))),file=muqi_file)
++            print('----dump z3 end----',file=muqi_file)
++        
+         self.successors.add_successor(
+             self.state,
+             expr,
+@@ -331,14 +395,29 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         self.state.scratch.exit_handled = True
+         expr = self._current_op.inputs[0].get_addr().offset
+-        self.successors.add_successor(
+-            self.state,
+-            expr,
+-            self.state.scratch.guard,
+-            "Ijk_Call",
+-            exit_stmt_idx=DEFAULT_STATEMENT,
+-            exit_ins_addr=self.state.scratch.ins_addr,
+-        )
++        #address_of_function_contains_exit = [hex(0x400600)] #for xgethostname in agetty
++        address_of_function_contains_exit = []
++        if hex(expr) in address_of_function_contains_exit  :
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In ret',file=muqi_file)
++                print('----dump z3 start----',file=muqi_file)
++                print(claripy._backend_z3.z3_expr_to_smtmuqi(claripy._backend_z3.convert(claripy._backend_z3.simplify(self.state.regs.rax))),file=muqi_file)
++                print('----dump z3 end----',file=muqi_file)
++            self._execute_ret
++        else:
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print('In call',file=muqi_file)
++                #print('parent state is:[', self.state.history.parent,']',file=muqi_file)
++                print('current address is:[', hex(self.successors.addr),']',file=muqi_file)
++                print('address added is:[', hex(expr),']',file=muqi_file)
++            self.successors.add_successor(
++                self.state,
++                expr,
++                self.state.scratch.guard,
++                "Ijk_Call",
++                exit_stmt_idx=DEFAULT_STATEMENT,
++                exit_ins_addr=self.state.scratch.ins_addr,
++            )
+ 
+     def _execute_callind(self) -> None:
+         """
+@@ -346,6 +425,8 @@ class PcodeEmulatorMixin(SimEngineBase):
+         """
+         self.state.scratch.exit_handled = True
+         expr = self._get_value(self._current_op.inputs[0])
++        with open(muqi.programe_function_name_txt,'a') as muqi_file:
++            print('In callind',file=muqi_file)
+         self.successors.add_successor(
+             self.state,
+             expr,
+diff --git a/angr/engines/pcode/engine.py b/angr/engines/pcode/engine.py
+index e9ee6603b..489d4f0d5 100644
+--- a/angr/engines/pcode/engine.py
++++ b/angr/engines/pcode/engine.py
+@@ -10,6 +10,8 @@ from ... import errors
+ from .lifter import PcodeLifterEngineMixin, lifters, IRSB
+ from .emulate import PcodeEmulatorMixin
+ 
++from ... import muqi
++
+ l = logging.getLogger(__name__)
+ 
+ # pylint:disable=abstract-method
+@@ -57,6 +59,8 @@ class HeavyPcodeMixin(
+         **kwargs
+     ) -> None:
+         # pylint:disable=arguments-differ
++        if __debug__:
++            l.warning('In p-codes process_successors 111')
+         if not lifters[self.state.arch.name] or type(successors.addr) is not int:
+             return super().process_successors(successors,
+                                               extra_stop_points=extra_stop_points,
+@@ -80,7 +84,8 @@ class HeavyPcodeMixin(
+                     "Assembling failed. Please make sure keystone is installed, and the"
+                     " assembly string is correct."
+                 )
+-
++        if __debug__:
++            l.warning('In p-codes process_successors')
+         successors.sort = "IRSB"
+         successors.description = "IRSB"
+         self.state.history.recent_block_count = 1
+@@ -105,12 +110,15 @@ class HeavyPcodeMixin(
+             self._store_successor_artifacts(successors)
+             finished = self._process_irsb()
+ 
++            
+         self._process_successor_exits(successors)
+         successors.processed = True
+ 
+     def _lift_irsb(self):
+         irsb = self.state.scratch.irsb
+         if irsb is None:
++            if __debug__:
++                l.warning('In lift irsb')
+             irsb = self.lift_pcode(
+                 addr=self._addr,
+                 state=self.state,
+@@ -166,6 +174,19 @@ class HeavyPcodeMixin(
+         Execute the IRSB. Returns True if successfully processed.
+         """
+         try:
++            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                print("block range:[",hex(self.state.scratch.irsb.addr), "->", hex(self.state.scratch.irsb.addr +self.state.scratch.irsb.size),"]",file=muqi_file)
++                print('current state is:[', self.state,']',file=muqi_file)
++            if __debug__:
++                l.warning("INSIDE _process_irsb, address of this block is from %#010x to %#010x",self.state.scratch.irsb.addr, self.state.scratch.irsb.addr +self.state.scratch.irsb.size)
++            
++            
++            #muqi, block this for testing
++            if __debug__:
++                self.state.scratch.irsb.pp()
++            
++            if __debug__:
++                l.warning("INSIDE _process_irsb, len of irsb is: %d",len(self.state.scratch.irsb._instructions))
+             self.handle_pcode_block(self.state.scratch.irsb)
+             return True
+         except errors.SimReliftException as e:
+@@ -190,6 +211,8 @@ class HeavyPcodeMixin(
+         # FIXME:
+         # except VEXEarlyExit:
+         #     break
++        if __debug__:
++            l.warning("INSIDE _process_irsb return FALSE")
+         return False
+ 
+ 
+@@ -197,6 +220,7 @@ class HeavyPcodeMixin(
+         """
+         Do return emulation and call-less stuff.
+         """
++
+         for exit_state in list(successors.all_successors):
+             exit_jumpkind = exit_state.history.jumpkind
+             if exit_jumpkind is None:
+@@ -205,9 +229,9 @@ class HeavyPcodeMixin(
+             if o.CALLLESS in self.state.options and exit_jumpkind == "Ijk_Call":
+                 exit_state.registers.store(
+                     exit_state.arch.ret_offset,
+-                    exit_state.solver.Unconstrained(
+-                        "fake_ret_value", exit_state.arch.bits
+-                    ),
++                    #muqi_change here
++                    #make internal/external call return 0. 
++                    claripy.BVV(0, exit_state.arch.bits),
+                 )
+                 exit_state.scratch.target = exit_state.solver.BVV(
+                     successors.addr + self.state.scratch.irsb.size, exit_state.arch.bits
+diff --git a/angr/engines/pcode/lifter.py b/angr/engines/pcode/lifter.py
+index c095d6e8b..84e81d6d5 100644
+--- a/angr/engines/pcode/lifter.py
++++ b/angr/engines/pcode/lifter.py
+@@ -438,7 +438,8 @@ class IRSB:
+     def statements(self) -> Iterable:
+         # FIXME: For compatibility, may want to implement Ist_IMark and
+         # pyvex.IRStmt.Exit to ease analyses.
+-        l.warning('Returning empty statements list!')
++        if __debug__:
++            l.warning('Returning empty statements list!')
+         return []
+         # return self._statements
+ 
+@@ -926,6 +927,8 @@ class PcodeBasicBlockLifter:
+                         op.seq.pc.offset, op.seq.uniq,
+                         ExitStatement(op.inputs[0].offset, 'Ijk_Boring')))
+                 elif op.opcode == pypcode.OpCode.BRANCH:
++                    if __debug__:
++                        l.warning("Inside lifter, branch")
+                     next_block = (op.inputs[0].offset, 'Ijk_Boring')
+                 elif op.opcode == pypcode.OpCode.BRANCHIND:
+                     next_block = (None, 'Ijk_Boring')
+@@ -1134,6 +1137,12 @@ class PcodeLifterEngineMixin(SimEngineBase):
+             self._single_step = False
+ 
+         # phase 1: parameter defaults
++        if __debug__:
++            l.warning('!!!!!!!!!addr is %s',str(hex(addr)))
++            if size :
++                l.warning('size is %d',size)
++            else :
++                l.warning('size is unknown')
+         if addr is None:
+             addr = state.solver.eval(state._ip)
+         if size is not None:
+diff --git a/angr/engines/soot/engine.py b/angr/engines/soot/engine.py
+index 0e0f29ec7..02c03b73e 100644
+--- a/angr/engines/soot/engine.py
++++ b/angr/engines/soot/engine.py
+@@ -341,6 +341,8 @@ class SootMixin(SuccessorsMixin, ProcedureMixin):
+         ret_state = native_state.copy()
+ 
+         # set successor flags
++        if __debug__:
++            l.warning("in soot prepare_native_return_state _ip")
+         ret_state.regs._ip = ret_state.callstack.ret_addr
+         ret_state.scratch.guard = ret_state.solver.true
+         ret_state.history.jumpkind = 'Ijk_Ret'
+diff --git a/angr/engines/successors.py b/angr/engines/successors.py
+index abd118b04..8bb3276b6 100644
+--- a/angr/engines/successors.py
++++ b/angr/engines/successors.py
+@@ -103,7 +103,8 @@ class SimSuccessors:
+         :param int exit_ins_addr: The instruction pointer of this exit, which is an integer by default.
+         :param int source:        The source of the jump (i.e., the address of the basic block).
+         """
+-
++        if __debug__:
++            l.warning("in add_successor, target is: %s",target)
+         # First, trigger the SimInspect breakpoint
+         state._inspect('exit', BP_BEFORE, exit_target=target, exit_guard=guard, exit_jumpkind=jumpkind)
+         state.scratch.target = state._inspect_getattr("exit_target", target)
+@@ -178,6 +179,9 @@ class SimSuccessors:
+             state._inspect('call', BP_BEFORE, function_address=state.regs._ip)
+             new_func_addr = state._inspect_getattr('function_address', None)
+             if new_func_addr is not None and not claripy.is_true(new_func_addr == state.regs._ip):
++                if __debug__:
++                    l.warning("in successors _manage_callstack _ip")
++
+                 state.regs._ip = new_func_addr
+ 
+             try:
+diff --git a/angr/exploration_techniques/loop_seer.py b/angr/exploration_techniques/loop_seer.py
+index db6e41be3..6d611621f 100644
+--- a/angr/exploration_techniques/loop_seer.py
++++ b/angr/exploration_techniques/loop_seer.py
+@@ -3,7 +3,7 @@ import logging
+ from . import ExplorationTechnique
+ from ..knowledge_base import KnowledgeBase
+ from ..knowledge_plugins.functions import Function
+-
++from .. import muqi
+ 
+ l = logging.getLogger(name=__name__)
+ 
+@@ -96,7 +96,12 @@ class LoopSeer(ExplorationTechnique):
+         if node is not None:
+             kwargs['num_inst'] = min(kwargs.get('num_inst', float('inf')), len(node.instruction_addrs))
+         succs = simgr.successors(state, **kwargs)
+-
++        #muqi we revert successors here, since for [CB1:b1,b2,b3], we run b3 first, then b2.
++        #'''
++        if len(succs.successors) == 2:
++            succs.successors.reverse()
++            succs.flat_successors.reverse()
++        #'''   
+ 
+         # Edge case: When limiting concrete loops, we may not want to do so
+         # via the header.  If there is a way out of the loop, and we can
+@@ -166,6 +171,20 @@ class LoopSeer(ExplorationTechnique):
+                         else:
+                             # Remove the state from the successors object
+                             # This state is going to be filtered by the self.filter function
++                            
++                            with open(muqi.programe_function_name_txt,'a') as muqi_file:
++                                #muqi add fake return node here for branch
++                                print('successors transfer:[',hex(state.addr),'->', hex(succ_state.addr) ,']',file=muqi_file)
++                                print('parent state is:[', succ_state.history,']',file=muqi_file)
++                                print("block range:[",hex(succ_state.addr), "->", hex(succ_state.addr +succ_state.project.factory.block(succ_state.addr).vex.size),"]",file=muqi_file)
++                                print('current state is:[', succ_state,']',file=muqi_file)
++                                print('In fakeret',file=muqi_file)
++                                print('----dump z3 start----',file=muqi_file)
++                                print('; benchmark',file=muqi_file)
++                                print('(_ bv0 64)',file=muqi_file)
++                                print('----dump z3 end----',file=muqi_file)
++                                
++			                
+                             self.cut_succs.append(succ_state)
+ 
+                 l.debug("%s back edge based trip counts %s", state, state.loop_data.back_edge_trip_counts)
+diff --git a/angr/exploration_techniques/slicecutor.py b/angr/exploration_techniques/slicecutor.py
+index 9c0593906..09320cd93 100644
+--- a/angr/exploration_techniques/slicecutor.py
++++ b/angr/exploration_techniques/slicecutor.py
+@@ -74,6 +74,8 @@ class Slicecutor(ExplorationTechnique):
+                 raise Exception("This should absolutely never happen, what?")
+             for target in self._annotated_cfg.get_targets(state.addr):
+                 successor = unconstrained_successors[0].copy()
++                if __debug__:
++                    l.warning("in slicecutor _ip")
+                 successor.regs._ip = target
+                 new_active.append(successor)
+             l.debug('Got unconstrained: %d new states are created based on AnnotatedCFG.', len(new_active))
+diff --git a/angr/exploration_techniques/tracer.py b/angr/exploration_techniques/tracer.py
+index 36f41dc99..f8fa6d4ee 100644
+--- a/angr/exploration_techniques/tracer.py
++++ b/angr/exploration_techniques/tracer.py
+@@ -420,6 +420,9 @@ class Tracer(ExplorationTechnique):
+         translated_addr = self._translate_trace_addr(expected_addr, current_obj)
+         l.info("Attempt to fix a deviation: Forcing execution from %#x to %#x (instead of %#x).",
+                state.addr, succ.addr, translated_addr)
++        
++        if __debug__:
++            l.warning("in tracer _ip")
+         succ._ip = translated_addr
+ 
+         succ.globals['trace_idx'] = trace_idx + 1
+diff --git a/angr/factory.py b/angr/factory.py
+index f2defc716..1e3fe19ec 100644
+--- a/angr/factory.py
++++ b/angr/factory.py
+@@ -9,6 +9,7 @@ from .callable import Callable
+ from .errors import AngrAssemblyError
+ from .engines import UberEngine, ProcedureEngine, SimEngineConcrete
+ 
++from . import muqi
+ 
+ l = logging.getLogger(name=__name__)
+ 
+@@ -108,7 +109,7 @@ class AngrObjectFactory:
+         """
+         return self.project.simos.state_full_init(**kwargs)
+ 
+-    def call_state(self, addr, *args, **kwargs):
++    def call_state(self, input_txt, addr, *args, **kwargs):
+         """
+         Returns a state object initialized to the start of a given function, as if it were called with given parameters.
+ 
+@@ -150,6 +151,7 @@ class AngrObjectFactory:
+         set alloc_base to point to somewhere other than the stack, set grow_like_stack to False so that sequencial
+         allocations happen at increasing addresses.
+         """
++        muqi.programe_function_name_txt = input_txt
+         return self.project.simos.state_call(addr, *args, **kwargs)
+ 
+     def simulation_manager(self, thing: Optional[Union[List[SimState], SimState]]=None, **kwargs) -> 'SimulationManager':
+diff --git a/angr/sim_manager.py b/angr/sim_manager.py
+index aae8858fd..5cd630a79 100644
+--- a/angr/sim_manager.py
++++ b/angr/sim_manager.py
+@@ -345,9 +345,14 @@ class SimulationManager:
+                             successor_func=successor_func, filter_func=filter_func, **run_args)
+         # ------------------ Compatibility layer ---------------->8
+         bucket = defaultdict(list)
+-
++        count = 0
++        if __debug__:
++            l.warning("Stepping %s of %s", stash, self)
+         for state in self._fetch_states(stash=stash):
+-
++            
++            if __debug__:
++                l.warning('next step: count is%d, state before is %s', count,state)
++                l.warning(type(state))
+             goto = self.filter(state, filter_func=filter_func)
+             if isinstance(goto, tuple):
+                 goto, state = goto
+@@ -361,8 +366,16 @@ class SimulationManager:
+                 continue
+ 
+             pre_errored = len(self._errored)
+-
++            #print(state)
++            if __debug__:
++                l.warning('next step: state before is %s', state)
++                l.warning('states parent is %s',state.history.parent)
++                l.warning('state_ip is')
++                l.warning(state._ip)
+             successors = self.step_state(state, successor_func=successor_func, **run_args)
++            if __debug__:
++                l.warning('after step, returned successors is')
++                l.warning(successors)
+             # handle degenerate stepping cases here. desired behavior:
+             # if a step produced only unsat states, always add them to the unsat stash since this usually indicates a bug
+             # if a step produced sat states and save_unsat is False, drop the unsats
+@@ -377,14 +390,27 @@ class SimulationManager:
+                 else:
+                     # no unsats. we've deadended.
+                     bucket['deadended'].append(state)
++                    if __debug__:
++                        try:
++                            l.warning('state return is %s',state.regs.eax)
++                        except:
++                            try:
++                                l.warning('state return is %s',state.regs.rax)
++                            except:
++                                l.warning('state.regs.eax/rax does not exist')
+                     continue
+             else:
+                 # there were sat states. it's okay to drop the unsat ones if the user said so.
+                 if not self._save_unsat:
++                    l.warning("it is fine to drop the unsat in previous line")
+                     successors.pop('unsat', None)
+ 
+             for to_stash, successor_states in successors.items():
+                 bucket[to_stash or stash].extend(successor_states)
++            if __debug__:
++                l.warning('next is %s', state)
++            count += 1
++
+ 
+         self._clear_states(stash=stash)
+         for to_stash, states in bucket.items():
+@@ -437,7 +463,11 @@ class SimulationManager:
+         Don't use this function manually - it is meant to interface with exploration techniques.
+         """
+         if successor_func is not None:
++            if __debug__:
++                l.warning("in successor_fun is not none")
+             return successor_func(state, **run_args)
++        if __debug__:
++                l.warning("in successor_fun is empty")
+         return self._project.factory.successors(state, **run_args)
+ 
+     #
+diff --git a/angr/sim_procedure.py b/angr/sim_procedure.py
+index b22a29b03..ed5331d63 100644
+--- a/angr/sim_procedure.py
++++ b/angr/sim_procedure.py
+@@ -359,6 +359,8 @@ class SimProcedure:
+         If this is not an inline call, grab a return address from the state and jump to it.
+         If this is not an inline call, set a return expression with the calling convention.
+         """
++        if __debug__:
++            l.warning('Inside sim procedure ret')
+         self.inhibit_autoret = True
+ 
+         if expr is not None:
+diff --git a/angr/sim_state.py b/angr/sim_state.py
+index 62ec74d05..572e79240 100644
+--- a/angr/sim_state.py
++++ b/angr/sim_state.py
+@@ -342,6 +342,9 @@ class SimState(PluginHub):
+         :return:    None
+         """
+         try:
++            if __debug__:
++                l.warning("in sim_state _ip(self, val)")
++                l.warning(val)
+             self.regs._ip = val
+         except AttributeError as e:
+             raise TypeError(str(e)) from e
+@@ -479,6 +482,8 @@ class SimState(PluginHub):
+ 
+             self._inspect('constraints', BP_BEFORE, added_constraints=constraints)
+             constraints = self._inspect_getattr("added_constraints", constraints)
++
++            
+             added = self.solver.add(*constraints)
+             self._inspect('constraints', BP_AFTER)
+ 
+diff --git a/angr/simos/javavm.py b/angr/simos/javavm.py
+index b8fafc69c..fd1239209 100644
+--- a/angr/simos/javavm.py
++++ b/angr/simos/javavm.py
+@@ -136,6 +136,9 @@ class SimJavaVM(SimOS):
+                              "and no address was provided.")
+ 
+         # init state register
++        if __debug__:
++            l.warning("in javavm state_blank _ip")
++
+         state.regs._ip = addr if addr else self.project.entry
+         state.regs._ip_binary = self.project.loader.main_object
+         state.regs._invoke_return_target = None
+diff --git a/angr/state_plugins/light_registers.py b/angr/state_plugins/light_registers.py
+index 87584d2b4..b66ed2558 100644
+--- a/angr/state_plugins/light_registers.py
++++ b/angr/state_plugins/light_registers.py
+@@ -151,6 +151,7 @@ class SimLightRegisters(SimStatePlugin):
+                               "to make unknown regions hold null")
+                     l.warning("3) adding the state option SYMBOL_FILL_UNCONSTRAINED_{MEMORY_REGISTERS}, "
+                               "to suppress these messages.")
++                    #raise NotImplementedError()
+                 l.warning("Filling register %s with %d unconstrained bytes", name, size)
+             return self.state.solver.Unconstrained('reg_%s' % name, size_bits, key=('reg', name), eternal=True)  # :)
+ 
+diff --git a/angr/state_plugins/solver.py b/angr/state_plugins/solver.py
+index 36ac16d62..588fb0cf4 100644
+--- a/angr/state_plugins/solver.py
++++ b/angr/state_plugins/solver.py
+@@ -326,6 +326,7 @@ class SimSolver(SimStatePlugin):
+ 
+         :returns:               an unconstrained symbol (or a concrete value of 0).
+         """
++        #""" #muqi_change here
+         if o.SYMBOLIC_INITIAL_VALUES in self.state.options:
+             # Return a symbolic value
+             if o.ABSTRACT_MEMORY in self.state.options:
+@@ -342,6 +343,8 @@ class SimSolver(SimStatePlugin):
+         else:
+             # Return a default value, aka. 0
+             return claripy.BVV(0, bits)
++        #"""
++        #return claripy.BVV(0, bits)
+ 
+     def BVS(self, name, size,
+             min=None, max=None, stride=None,
+diff --git a/angr/storage/memory_mixins/default_filler_mixin.py b/angr/storage/memory_mixins/default_filler_mixin.py
+index 306a63084..e330faf92 100644
+--- a/angr/storage/memory_mixins/default_filler_mixin.py
++++ b/angr/storage/memory_mixins/default_filler_mixin.py
+@@ -49,7 +49,7 @@ class DefaultFillerMixin(MemoryMixin):
+                           "to make unknown regions hold null")
+                 l.warning("3) adding the state option SYMBOL_FILL_UNCONSTRAINED_{MEMORY,REGISTERS}, "
+                           "to suppress these messages.")
+-
++                #raise NotImplementedError()
+             if is_mem:
+                 refplace_int = self.state.solver.eval(self.state._ip)
+                 if self.state.project:
+diff --git a/angr/storage/memory_mixins/paged_memory/paged_memory_mixin.py b/angr/storage/memory_mixins/paged_memory/paged_memory_mixin.py
+index af97dd446..200ae990c 100644
+--- a/angr/storage/memory_mixins/paged_memory/paged_memory_mixin.py
++++ b/angr/storage/memory_mixins/paged_memory/paged_memory_mixin.py
+@@ -560,10 +560,12 @@ class PagedMemoryMixin(MemoryMixin):
+         # cycle over all the keys ( the page number )
+         for pageno, page in self._pages.items():
+             if pageno in white_list_page_number:
+-                #l.warning("Page " + str(pageno) + " not flushed!")
++                if __debug__:
++                    l.warning("Page " + str(pageno) + " not flushed!")
+                 new_page_dict[pageno] = page
+             else:
+-                #l.warning("Page " + str(pageno) + " flushed!")
++                if __debug__:
++                    l.warning("Page " + str(pageno) + " flushed!")
+                 flushed.append((pageno, self.page_size))
+         self._pages = new_page_dict
+         return flushed

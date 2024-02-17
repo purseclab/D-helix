@@ -1,0 +1,339 @@
+diff --git a/claripy/__init__.py b/claripy/__init__.py
+index f5b037b1..fae83340 100644
+--- a/claripy/__init__.py
++++ b/claripy/__init__.py
+@@ -68,6 +68,8 @@ if not os.environ.get('WORKER', False) and os.environ.get('REMOTE', False):
+     except socket.error:
+         raise ImportError("can't connect to backend")
+ else:
++    if __debug__:
++        l.warning("Choose backend_z3 as backend here")
+     _backend_z3 = _backends_module.BackendZ3()
+ 
+ _backend_manager.backends._register_backend(_backend_z3, 'z3', False, False)
+diff --git a/claripy/ast/bv.py b/claripy/ast/bv.py
+index 177030d2..fe6c3bd1 100644
+--- a/claripy/ast/bv.py
++++ b/claripy/ast/bv.py
+@@ -216,7 +216,6 @@ def BVS(name, size, min=None, max=None, stride=None, uninitialized=False,  #pyli
+ 
+     :returns:               a BV object representing this symbol.
+     """
+-
+     if stride == 0 and max != min:
+         raise ClaripyValueError("BVSes of stride 0 should have max == min")
+ 
+@@ -245,7 +244,6 @@ def BVV(value, size=None, **kwargs):
+ 
+     :returns:       A BV object representing this value.
+     """
+-
+     if type(value) in (bytes, bytearray, memoryview, str):
+         if type(value) is str:
+             l.warning("BVV value is a unicode string, encoding as utf-8")
+diff --git a/claripy/backends/__init__.py b/claripy/backends/__init__.py
+index ab8ce39b..099a1781 100644
+--- a/claripy/backends/__init__.py
++++ b/claripy/backends/__init__.py
+@@ -493,6 +493,11 @@ class Backend:
+         :param model_callback:      a function that will be executed with recovered models (if any)
+         :return:              A sequence of up to n results (backend objects)
+         """
++        if __debug__:
++            l.warning("inside claripy eval")
++            l.warning(solver)
++            l.warning(self.convert(expr))
++
+         if self._solver_required and solver is None:
+             raise BackendError("%s requires a solver for evaluation" % self.__class__.__name__)
+ 
+diff --git a/claripy/backends/backend_concrete.py b/claripy/backends/backend_concrete.py
+index 1b2791a2..3ade2277 100644
+--- a/claripy/backends/backend_concrete.py
++++ b/claripy/backends/backend_concrete.py
+@@ -162,6 +162,11 @@ class BackendConcrete(Backend):
+             raise BackendError("idk how to turn this into a primitive")
+ 
+     def _eval(self, expr, n, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside backendconcrete eval")
++            l.warning("expr is ")
++            l.warning(expr)
++
+         if not all(extra_constraints):
+             raise UnsatError('concrete False constraint in extra_constraints')
+ 
+diff --git a/claripy/backends/backend_smtlib_solvers/__init__.py b/claripy/backends/backend_smtlib_solvers/__init__.py
+index bd77530b..413a84d3 100644
+--- a/claripy/backends/backend_smtlib_solvers/__init__.py
++++ b/claripy/backends/backend_smtlib_solvers/__init__.py
+@@ -166,6 +166,9 @@ class SMTLibSolverBackend(BackendSMTLibBase):
+         return sat, error, None
+ 
+     def _eval(self, expr, n, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside backendsmtlib eval")
++
+         e_c = list(extra_constraints)
+ 
+         if expr.is_constant():
+diff --git a/claripy/backends/backend_vsa.py b/claripy/backends/backend_vsa.py
+index 974ed4cc..3a4316dc 100644
+--- a/claripy/backends/backend_vsa.py
++++ b/claripy/backends/backend_vsa.py
+@@ -112,6 +112,8 @@ class BackendVSA(Backend):
+         raise BackendError()
+ 
+     def _eval(self, expr, n, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside backendvsa eval")
+         if isinstance(expr, StridedInterval):
+             return expr.eval(n)
+         elif isinstance(expr, ValueSet):
+diff --git a/claripy/backends/backend_z3.py b/claripy/backends/backend_z3.py
+index bdd53fef..2fc3096c 100644
+--- a/claripy/backends/backend_z3.py
++++ b/claripy/backends/backend_z3.py
+@@ -1,4 +1,5 @@
+-
++import traceback
++import sys
+ import os
+ import z3
+ import ctypes
+@@ -24,10 +25,12 @@ try:
+ except ImportError:
+     _is_pypy = False
+ 
++#'''
+ def z3_expr_to_smt2(f, status="unknown", name="benchmark", logic=""):
+       # from https://stackoverflow.com/a/14629021/9719920
+       v = (z3.Ast * 0)()
+       return z3.Z3_benchmark_to_smtlib_string(f.ctx_ref(), name, logic, status, "", 0, v, f.as_ast())
++#'''
+ 
+ def claripy_solver_to_smt2(s):
+     return s._get_solver().to_smt2()
+@@ -146,6 +149,15 @@ class BackendZ3(Backend):
+         self._op_raw['__xor__'] = self._op_xor
+         self._op_raw['__and__'] = self._op_and
+ 
++
++    def z3_expr_to_smtmuqi(self,f, status="unknown", name="benchmark", logic=""):
++      # from https://stackoverflow.com/a/14629021/9719920
++      v = (z3.Ast * 0)()
++      return z3.Z3_benchmark_to_smtlib_string(f.ctx_ref(), name, logic, status, "", 0, v, f.as_ast())
++
++    def claripy_solver_to_smt2muqi(self,s):
++        return s._get_solver().to_smt2()
++
+     # XXX this is a HUGE HACK that should be removed whenever uninitialized gets moved to the
+     # "proposed annotation backend" or wherever will prevent it from being part of the object
+     # identity. also whenever the VSA attributes get the fuck out of BVS as well
+@@ -367,6 +379,8 @@ class BackendZ3(Backend):
+             raise BackendError("unexpected type %s encountered in BackendZ3" % type(obj))
+ 
+     def call(self, *args, **kwargs):  # pylint;disable=arguments-differ
++        if __debug__:
++            l.warning("Inside call of backend_z3")
+         return Backend.call(self, *args, **kwargs)
+ 
+     @condom
+@@ -703,6 +717,8 @@ class BackendZ3(Backend):
+         return s
+ 
+     def _add(self, s, c, track=False):
++        if __debug__:
++            l.warning("Inside _add of backendz3")
+         if track:
+             already_tracked = set(str(impl.children()[0]) for impl in s.assertions())
+             for constraint in c:
+@@ -713,6 +729,8 @@ class BackendZ3(Backend):
+             s.add(*c)
+ 
+     def add(self, s, c, track=False):
++        if __debug__:
++            l.warning("Inside add of backendz3")
+         converted = self.convert_list(c)
+         if track:
+             for a, nice_ast in zip(c, converted):
+@@ -727,6 +745,10 @@ class BackendZ3(Backend):
+ 
+     @condom
+     def _primitive_from_model(self, model, expr):
++        if __debug__:
++            l.warning("inside _primitive_from_model of backendz3")
++            l.warning(expr)
++
+         v = model.eval(expr, model_completion=True)
+         return self._abstract_to_primitive(v.ctx.ctx, v.ast)
+ 
+@@ -748,6 +770,9 @@ class BackendZ3(Backend):
+         return model
+ 
+     def _satisfiable(self, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside _satisfiable of backendz3")
++
+         global solve_count
+ 
+         solve_count += 1
+@@ -769,6 +794,8 @@ class BackendZ3(Backend):
+         return True
+ 
+     def _eval(self, expr, n, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside backendz3 eval")
+         results = self._batch_eval(
+             [ expr ], n, extra_constraints=extra_constraints,
+             solver=solver, model_callback=model_callback
+@@ -780,6 +807,8 @@ class BackendZ3(Backend):
+     @condom
+     def _batch_eval(self, exprs, n, extra_constraints=(), solver=None, model_callback=None):
+         global solve_count
++        if __debug__:
++            l.warning("inside backendz3 _batch_eval")
+ 
+         result_values = [ ]
+ 
+@@ -798,6 +827,9 @@ class BackendZ3(Backend):
+             # construct results
+             r = [ ]
+             for expr in exprs:
++                if __debug__:
++                    l.warning("inside backendz3 _batch_eval:1")
++                    l.warning(expr)
+                 if not isinstance(expr, (numbers.Number, str, bool)):
+                     v = self._primitive_from_model(model, expr)
+                     r.append(v)
+@@ -826,6 +858,10 @@ class BackendZ3(Backend):
+     def _min(self, expr, extra_constraints=(), signed=False, solver=None, model_callback=None):
+         global solve_count
+ 
++        if __debug__:
++            l.warning("inside backendz3 _min")
++            l.warning(expr)
++
+         if signed:
+             lo = -2**(expr.size()-1)
+             hi = 2**(expr.size()-1)-1
+@@ -898,6 +934,9 @@ class BackendZ3(Backend):
+     def _max(self, expr, extra_constraints=(), signed=False, solver=None, model_callback=None):
+         global solve_count
+ 
++        if __debug__:
++            l.warning("inside backendz3 _max")
++            l.warning(expr)
+         if signed:
+             lo = -2**(expr.size()-1)
+             hi = 2**(expr.size()-1)-1
+@@ -969,6 +1008,7 @@ class BackendZ3(Backend):
+ 
+     @condom
+     def simplify(self, expr):  #pylint:disable=arguments-differ
++        #traceback.print_stack()
+         if expr._simplified:
+             return expr
+ 
+@@ -992,7 +1032,7 @@ class BackendZ3(Backend):
+ 
+         expr_raw = self.convert(expr)
+ 
+-        #l.debug("... before:\n%s", z3_expr_to_smt2(expr_raw))
++        #l.warning("... before:\n%s", z3_expr_to_smt2(expr_raw))
+ 
+         #s = expr_raw
+         if isinstance(expr_raw, z3.BoolRef):
+@@ -1008,7 +1048,7 @@ class BackendZ3(Backend):
+         else:
+             s = expr_raw
+ 
+-        #l.debug("... after:\n%s", z3_expr_to_smt2(s))
++        #l.warning("... after:\n%s", z3_expr_to_smt2(s))
+ 
+         o = self._abstract(s)
+         o._simplified = Base.FULL_SIMPLIFY
+@@ -1019,12 +1059,20 @@ class BackendZ3(Backend):
+         return o
+ 
+     def _is_false(self, e, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside _is_false of backendz3")
++            l.warning(e)
+         return z3.simplify(e).eq(z3.BoolVal(False, ctx=self._context))
+ 
+     def _is_true(self, e, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside _is_true of backendz3")
++            l.warning(e)
+         return z3.simplify(e).eq(z3.BoolVal(True, ctx=self._context))
+ 
+     def _solution(self, expr, v, extra_constraints=(), solver=None, model_callback=None):
++        if __debug__:
++            l.warning("inside _solution of backendz3")
+         return self._satisfiable(extra_constraints=(expr == v,) + tuple(extra_constraints), solver=solver, model_callback=model_callback)
+ 
+     #
+diff --git a/claripy/backends/backend_z3_parallel.py b/claripy/backends/backend_z3_parallel.py
+index b2a19d64..0308acaa 100644
+--- a/claripy/backends/backend_z3_parallel.py
++++ b/claripy/backends/backend_z3_parallel.py
+@@ -92,6 +92,8 @@ class BackendZ3Parallel(BackendZ3):
+     def _results(self, *args, **kwargs):
+         return self._background('_results', *args, **kwargs)
+     def _eval(self, *args, **kwargs):
++        if __debug__:
++            l.warning("inside backendz3parallel eval")
+         return self._background('_eval', *args, **kwargs)
+     def _batch_eval(self, *args, **kwargs):
+         return self._background('_batch_eval', *args, **kwargs)
+@@ -113,6 +115,8 @@ class BackendZ3Parallel(BackendZ3):
+     def _simplify(self, *args, **kwargs):
+         return self._synchronize('_simplify', *args, **kwargs)
+     def call(self, *args, **kwargs):
++        if __debug__:
++            l.warning("Inside call of backend_z3_parallel")
+         return self._synchronize('call', *args, **kwargs)
+     def resolve(self, *args, **kwargs):
+         return self._synchronize('resolve', *args, **kwargs)
+diff --git a/claripy/backends/backendremote.py b/claripy/backends/backendremote.py
+index cec46eac..1c4efbb0 100644
+--- a/claripy/backends/backendremote.py
++++ b/claripy/backends/backendremote.py
+@@ -57,6 +57,9 @@ class BackendRemote(Backend):
+         return get(res)
+ 
+     def _eval(self, expr, n, solver=None, extra_constraints=()):
++        if __debug__:
++            l.warning("inside backendremote eval")
++
+         for x in solver.plus_extra(extra_constraints):
+             if hasattr(x, 'make_uuid'):
+                 x.make_uuid()
+diff --git a/claripy/frontend.py b/claripy/frontend.py
+index f316c6ee..e921fc18 100644
+--- a/claripy/frontend.py
++++ b/claripy/frontend.py
+@@ -47,6 +47,9 @@ class Frontend:
+ 
+         :return:                        list of concrete ASTs
+         """
++        if __debug__:
++            l.warning("in claripy eval_to_ast")
++            l.warning(e)
+         return [ ast.bv.BVV(v, e.size()) for v in self.eval(e, n, extra_constraints=extra_constraints, exact=exact) ]
+ 
+ 
+diff --git a/claripy/frontend_mixins/constraint_expansion_mixin.py b/claripy/frontend_mixins/constraint_expansion_mixin.py
+index 77cbfea6..3bd5f40b 100644
+--- a/claripy/frontend_mixins/constraint_expansion_mixin.py
++++ b/claripy/frontend_mixins/constraint_expansion_mixin.py
+@@ -5,6 +5,8 @@ l = logging.getLogger("claripy.frontends.cache_mixin")
+ 
+ class ConstraintExpansionMixin:
+     def eval(self, e, n, extra_constraints=(), exact=None, **kwargs):
++        #with open('/tmp/angr.txt','a') as muqi_file:
++        #    print('In eval5',file=muqi_file)
+         results = super(ConstraintExpansionMixin, self).eval(
+             e, n,
+             extra_constraints=extra_constraints,

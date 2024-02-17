@@ -1,0 +1,17 @@
+diff --git a/claripy/backends/backend_z3.py b/claripy/backends/backend_z3.py
+index 75bebf24..d2379f10 100644
+--- a/claripy/backends/backend_z3.py
++++ b/claripy/backends/backend_z3.py
+@@ -144,6 +144,12 @@ class BackendZ3(Backend):
+         self._op_raw['__or__'] = self._op_or
+         self._op_raw['__xor__'] = self._op_xor
+         self._op_raw['__and__'] = self._op_and
++    
++    def z3_expr_to_smtmuqi(self,f, status="unknown", name="benchmark", logic=""):
++      # from https://stackoverflow.com/a/14629021/9719920
++      v = (z3.Ast * 0)()
++      return z3.Z3_benchmark_to_smtlib_string(f.ctx_ref(), name, logic, status, "", 0, v, f.as_ast())
++    
+ 
+     # XXX this is a HUGE HACK that should be removed whenever uninitialized gets moved to the
+     # "proposed annotation backend" or wherever will prevent it from being part of the object
