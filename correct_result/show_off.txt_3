@@ -1,0 +1,1281 @@
+flic_flic_probe_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+281.11836218833923
+Finish with stored dp
+libssh_sftp_get_new_id_z3:
+This function has type recovery problem in its arguments, nothing related with options, it works now
+321.5504295825958
+libssh_ssh_service_request_z3:
+Our framework's problem..works now
+444.2032518386841
+libssh_EC_GROUP_get_curve_name_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+753.4125015735626
+Finish with stored dp
+libssh_BN_set_word_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+828.646826505661
+Finish with stored dp
+libcrypto_so_3_BN_abs_is_word_z3:
+This function has type recovery problem in its arguments, nothing related with options, it works now
+4949.039173841476
+libcrypto_so_3_aes_ocb_cipher_z3:
+Our framework's problem..works now
+5011.505753993988
+libcrypto_so_3_ossl_cmp_asn1_octet_string_set1_z3:
+Our framework's problem..works now
+5571.71121764183
+libcrypto_so_3_EC_GROUP_get_asn1_flag_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11258.0174202919
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_destroy_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11094.653352737427
+Finish with stored dp
+libcrypto_so_3_CONF_imodule_get_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11152.429631233215
+Finish with stored dp
+libcrypto_so_3_EC_KEY_get_conv_form_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11128.082554340363
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11113.421998977661
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_digests_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11222.326028823853
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_ssl_client_cert_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11251.051597833633
+Finish with stored dp
+libcrypto_so_3_ASN1_PCTX_get_cert_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11189.530933141708
+Finish with stored dp
+libcrypto_so_3_EC_METHOD_get_field_type_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11303.102876663208
+Finish with stored dp
+libcrypto_so_3_ASN1_PCTX_get_str_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11176.17628288269
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_ctrl_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11334.69413948059
+Finish with stored dp
+libcrypto_so_3_EC_KEY_get_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11330.178033590317
+Finish with stored dp
+libcrypto_so_3_EC_KEY_get_enc_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11449.982838392258
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_ciphers_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11408.779304027557
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_init_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11474.063232898712
+Finish with stored dp
+libcrypto_so_3_EC_GROUP_get_seed_len_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11547.895643472672
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_finish_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11501.419293880463
+Finish with stored dp
+libcrypto_so_3_EC_GROUP_get_curve_name_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11592.481510400772
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_load_pubkey_function_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11520.012873888016
+Finish with stored dp
+libcrypto_so_3_ASN1_PCTX_get_oid_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11624.618992805481
+Finish with stored dp
+libcrypto_so_3_ASN1_PCTX_get_nm_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11687.727483272552
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_pkey_asn1_meths_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11697.6711435318
+Finish with stored dp
+libcrypto_so_3_EC_GROUP_get_point_conversion_form_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11771.756975650787
+Finish with stored dp
+libcrypto_so_3_BN_BLINDING_get_flags_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11788.784520149231
+Finish with stored dp
+libcrypto_so_3_ENGINE_get_pkey_meths_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+11766.785969495773
+Finish with stored dp
+pcm_vidc2linear_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+25690.707421302795
+We cannot fix this function C120
+skynet_lua_version_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25098.3624420166
+Finish with stored dp
+skynet_lua_gethookcount_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25178.048709392548
+Finish with stored dp
+skynet_je_arena_nthreads_get_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25491.783173322678
+Finish with stored dp
+skynet_lua_gettop_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25680.14897298813
+Finish with stored dp
+skynet_lua_isyieldable_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25844.46708393097
+Finish with stored dp
+skynet_luaL_optnumber_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+25918.984778881073
+Finish with stored dp
+skynet_lua_gethookmask_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+26258.985863924026
+Finish with stored dp
+skynet_je_arena_dirty_decay_ms_default_set_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+26397.883554697037
+Finish with stored dp
+skynet_je_arena_muzzy_decay_ms_default_set_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+26752.50068473816
+Finish with stored dp
+skynet_prof_thr_node_keycomp_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+26775.145608901978
+Finish with stored dp
+env_str2signum_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+28665.216599225998
+We cannot fix this function C120
+nl_xstrtoimax_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+38431.32344818115
+We cannot fix this function C120

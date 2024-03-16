@@ -1,0 +1,177 @@
+uv_run_tests_a_uv__signal_compare_z3:
+This function has type recovery problem in its arguments, nothing related with options, it works now
+355.3570644855499
+mov_mov_read_keys_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+1189.6542992591858
+Finish with stored dp
+masscan_readscan_filter_pass_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+1937.516969203949
+Finish with stored dp
+masscan_ssl_hello_size_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+1934.1863551139832
+Finish with stored dp
+masscan_checksum_ipv6_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+2084.3932955265045
+Finish with stored dp
+masscan_handle_ack_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+2500.0183215141296
+Finished with C120_1
+mov_mov_read_uuid_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+22453.32812356949
+We cannot fix this function C120
+masscan_pcapfile_percentdone_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+33809.063680648804
+We cannot fix this function C120
+masscan_ipv6address_is_equal_prefixed_z3:
+Chose 1,2 rules from 120 CANNOT fix this function
+33998.676661491394
+We cannot fix this function C120

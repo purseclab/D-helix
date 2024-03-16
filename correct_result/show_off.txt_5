@@ -1,0 +1,151 @@
+url_append_path_z3:
+DWARF:false
+Apply Data Archives:true
+Decompiler Parameter ID:true
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+328.64282274246216
+Finish with stored dp
+libuv_uv__signal_compare_z3:
+This function has type recovery problem in its arguments, nothing related with options, it works now
+192.81377863883972
+df_statvfs_works_z3:
+DWARF:true
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+andmask
+
+1844.7197716236115
+Finish with stored dp
+libssh_sftp_get_new_id_z3:
+This function has type recovery problem in its arguments, nothing related with options, it works now
+360.9898512363434
+libssh_ssh_service_request_z3:
+Our framework's problem..works now
+434.4321458339691
+libssh_BN_set_word_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+816.575642824173
+Finish with stored dp
+libssh_EC_GROUP_get_curve_name_z3:
+DWARF:true
+Apply Data Archives:false
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+ASCII Strings:true
+Call Convention ID:true
+Call-Fixup Installer:true
+Condense Filler Bytes:false
+Create Address Tables:true
+Data Reference:true
+Decompiler Switch Analysis:true
+Demangler GNU:true
+ELF Scalar Operand References:true
+Embedded Media:true
+External Entry References:true
+Function ID:true
+Function Start Search:true
+GCC Exception Handlers:true
+Non-Returning Functions - Discovered:true
+Non-Returning Functions - Known:true
+Reference:true
+Shared Return Calls:true
+Stack:true
+Subroutine References:true
+Variadic Function Signature Override:false
+following rules are banned:
+
+
+944.9955561161041
+Finish with stored dp
+libuv_uv__work_cancel_z3:
+DWARF:true
+Apply Data Archives:true
+Decompiler Parameter ID:false
+x86 Constant Reference Analyzer:true
+Aggressive Instruction Finder:false
+DWARF Line Number:false
+following rules are banned:
+andmask
+sub2add
