@@ -57,6 +57,7 @@ After putting the binary D_helixxxx/test_muqi/originalclang, we run SYMDIFF by c
 2. the clang compiler/ghidra/ghidra scripts folder address in generate_symbolic.py is correct.<br>
 Note, to enable the loop-bound feature in angr, uncomment the setting for 'loop_bound_cond' in 'angr/engines/vex/heavy/heavy.py'.
 After symbolic models are generated, run 'python check_diff.py' to generate the report for inaccuracies.
+The result of SYMDIFF will be shown in a file named diff_result.
 
 ### Tuner:
 #### Patch Ghidra:
@@ -65,3 +66,4 @@ You may patch Ghidra using ghidra_diff.patch with the following Ghidra commit:
 Or you may download the latest Ghidra. And to disable heuristics in Ghidra, you may follow our method for 'Rule *rl;' in Ghidra/Features/Decompiler/src/decompile/cpp/action.cc.
 #### Run Tuner:
 Before running tuner, make sure the inaccuracies detected from SYMDIFF is reported by running 'python check_diff.py'. After that, run 'python regenerated_inall.py' in subdirectory regenerated.
+The result of Tuner will be shown in a directory called correct_result.
