@@ -1,0 +1,2933 @@
+diff --git a/include/klee/Constraints.h b/include/klee/Constraints.h
+index 87069f8..eb35d03 100755
+--- a/include/klee/Constraints.h
++++ b/include/klee/Constraints.h
+@@ -44,6 +44,8 @@ public:
+   ref<Expr> simplifyExpr(ref<Expr> e) const;
+ 
+   void addConstraint(ref<Expr> e);
++  //muqi
++  void dump_constraints();
+   
+   bool empty() const {
+     return constraints.empty();
+diff --git a/include/klee/ExecutionState.h b/include/klee/ExecutionState.h
+index fa88891..a9ace73 100755
+--- a/include/klee/ExecutionState.h
++++ b/include/klee/ExecutionState.h
+@@ -335,6 +335,7 @@ public:
+   /// @brief Weight assigned for importance of this state.  Can be
+   /// used for searchers to decide what paths to explore
+   double weight;
++  std::vector< llvm::Instruction*> history_br_instructions;
+ 
+   /// @brief Exploration depth, i.e., number of times KLEE branched for this state
+   unsigned depth;
+diff --git a/include/klee/Expr.h b/include/klee/Expr.h
+index 212053b..ac0c534 100755
+--- a/include/klee/Expr.h
++++ b/include/klee/Expr.h
+@@ -24,6 +24,10 @@
+ #include <vector>
+ #include <map>
+ 
++#include <string>
++#include <mutex>
++
++
+ namespace llvm {
+   class Type;
+   class raw_ostream;
+@@ -38,6 +42,9 @@ class ObjectState;
+ 
+ template<class T> class ref;
+ 
++//muqi
++extern std::string klee_muqi_compare_file_path;
++extern std::mutex mtx;
+ 
+ /// Class representing symbolic expressions.
+ /**
+@@ -1001,9 +1008,11 @@ public:
+ private:
+   llvm::APInt value;
+ 
+-  ConstantExpr(const llvm::APInt &v) : value(v) {}
++  //ConstantExpr(const llvm::APInt &v) : value(v) {}
+ 
+ public:
++  //muqi
++  ConstantExpr(const llvm::APInt &v) : value(v) {}
+   ~ConstantExpr() {}
+ 
+   Width getWidth() const { return value.getBitWidth(); }
+diff --git a/include/klee/Internal/Support/ErrorHandling.h b/include/klee/Internal/Support/ErrorHandling.h
+index 2945169..3d8588a 100755
+--- a/include/klee/Internal/Support/ErrorHandling.h
++++ b/include/klee/Internal/Support/ErrorHandling.h
+@@ -16,6 +16,17 @@
+ #endif
+ #endif
+ 
++//muqi
++#include "klee/Internal/Support/ErrorHandling.h"
++#include "llvm/ADT/StringRef.h"
++#include "llvm/Support/raw_ostream.h"
++#include "llvm/Support/CommandLine.h"
++#include "llvm/IR/Instruction.h"
++#include "llvm/IR/Function.h"
++#include "llvm/ADT/Twine.h"
++#include "llvm/Support/raw_ostream.h"
++
++
+ #include <stdio.h>
+ 
+ namespace klee {
+@@ -23,6 +34,11 @@ namespace klee {
+ extern FILE *klee_warning_file;
+ extern FILE *klee_message_file;
+ 
++//muqi
++extern FILE *klee_muqi_file;
++extern FILE *klee_muqi_compare_file;
++extern FILE *klee_muqi_compare_file_test;
++
+ /// Print "KLEE: ERROR: " followed by the msg in printf format and a
+ /// newline on stderr and to warnings.txt, then exit with an error.
+ void klee_error(const char *msg, ...)
+@@ -32,6 +48,15 @@ void klee_error(const char *msg, ...)
+ /// newline on stderr and to messages.txt.
+ void klee_message(const char *msg, ...) __attribute__((format(printf, 1, 2)));
+ 
++
++//muqi
++void klee_muqi(const char *msg, ...) __attribute__((format(printf, 1, 2)));
++
++void klee_muqi_compare(const char *msg, ...) __attribute__((format(printf, 1, 2)));
++
++void klee_muqi_compare_test(const char *function_name, const char *msg, ...);
++
++
+ /// Print "KLEE: " followed by the msg in printf format and a
+ /// newline to messages.txt.
+ void klee_message_to_file(const char *msg, ...)
+diff --git a/lib/Core/AddressSpace.cpp b/lib/Core/AddressSpace.cpp
+index 62f1fa7..2efced4 100755
+--- a/lib/Core/AddressSpace.cpp
++++ b/lib/Core/AddressSpace.cpp
+@@ -12,6 +12,8 @@
+ #include "Memory.h"
+ #include "TimingSolver.h"
+ 
++#include "klee/Internal/Support/ErrorHandling.h"
++
+ #include "klee/Expr.h"
+ #include "klee/TimerStatIncrementer.h"
+ 
+diff --git a/lib/Core/ExecutionState.cpp b/lib/Core/ExecutionState.cpp
+index c48e1a5..50a0c8f 100755
+--- a/lib/Core/ExecutionState.cpp
++++ b/lib/Core/ExecutionState.cpp
+@@ -22,6 +22,10 @@
+ #include "llvm/Support/CommandLine.h"
+ #include "llvm/Support/raw_ostream.h"
+ 
++//muqi
++#include "llvm/ADT/APInt.h"
++#include "klee/Internal/Support/ErrorHandling.h"
++
+ #include <iomanip>
+ #include <sstream>
+ #include <cassert>
+@@ -244,6 +248,24 @@ ExecutionState::~ExecutionState() {
+     cur_mergehandler->removeOpenState(this);
+   }
+ 
++  //muqi
++  klee_muqi("Inside ExecutionState::~ExecutionState() \n");
++  int temp = 0;
++  klee_muqi("the address of stack will be poped are: \n");
++  for (std::vector<StackFrame>::iterator it = stack.begin() ; it != stack.end(); ++it){
++    //(*it).locals->value.get()->dump();
++    for (std::vector<const MemoryObject *>::iterator temp_it = (*it).allocas.begin(); temp_it != (*it).allocas.end(); ++ temp_it){
++      auto temp_address = reinterpret_cast<std::uint8_t*>((*temp_it)->address);
++      llvm::APInt outputtemp1 = llvm::APInt(Context::get().getPointerWidth(), (*temp_it)->address);
++      ConstantExpr *output = new ConstantExpr(outputtemp1);
++      //output->dump();
++      klee_muqi("address of mo memoryobject is %u\n",temp_address);
++    }
++    temp ++;
++  }
++  klee_muqi("the number of stackframe will be poped is %d\n",temp);
++  klee_muqi("double check by stack.size,  the number of stackframe is %d", stack.size());
++  klee_muqi("\n End of ExecutionState::~ExecutionState() printing \n");
+ 
+   while (!stack.empty()) popFrame();
+ }
+@@ -834,8 +856,9 @@ void ExecutionState::updateLCMState() {
+      }
+      else if (seq->getType() == identifier) {
+        if (curr != 0 ) {
+-        Identifier *id = dynamic_cast<Identifier*>(seq);
+-        assert(id);
++       // Identifier *id = dynamic_cast<Identifier*>(seq);
++        Identifier *id = static_cast<Identifier*>(seq);
++	assert(id);
+         llvm::outs() << " next step " << id->getValue() << " to execute " << "\n";
+         Function *func = moduleHandle->getFunction(id->getValue());
+         //initiateAsync(func); 
+diff --git a/lib/Core/Executor.cpp b/lib/Core/Executor.cpp
+index 54e659c..04856cf 100755
+--- a/lib/Core/Executor.cpp
++++ b/lib/Core/Executor.cpp
+@@ -82,6 +82,18 @@
+ #include "klee/Internal/Support/CompressionStream.h"
+ #endif
+ 
++//muqi
++#include "llvm/ADT/APInt.h"
++#include "llvm/IR/Metadata.h"
++#include "llvm/IR/DebugInfoMetadata.h"
++#ifdef ENABLE_Z3
++#include "./Z3Builder.h"
++#endif
++#define Muqi_DEBUG;
++#define Muqi_support_foreverloop;
++#define Muqi_external_call;
++#define Muqi_out_of_bound_pointer;
++
+ #include <cassert>
+ #include <algorithm>
+ #include <iomanip>
+@@ -1123,6 +1135,7 @@ bool isLoopBoundExcluded(std::string s, std::string fname) {
+   return false;
+ }
+ 
++/*
+ void addForkFreq(ExecutionState &state, std::string inst, bool isTrue) {
+   long s = (long)&state;
+   std::map<std::string, unsigned> m;
+@@ -1165,7 +1178,25 @@ unsigned getForkFreq(ExecutionState &state, std::string inst, bool isTrue) {
+      else return 0; 
+   }
+ }
++*/
++void addForkFreq(ExecutionState *state, llvm::Instruction* inst) {
++  state->history_br_instructions.push_back(inst);
++}
++unsigned getForkFreq(ExecutionState &state, llvm::Instruction* inst) {
++  unsigned result = 0;
++  for (auto i = state.history_br_instructions.begin(); i != state.history_br_instructions.end(); ++i){
++    if (*i == inst){
++      result= result + 1;
++    }
++  }
++  return result;
++}
+ 
++void showForkfreq(ExecutionState &state){
++  for (auto i = state.history_br_instructions.begin(); i != state.history_br_instructions.end(); ++i){
++    llvm::errs() << "\nhistory instruction " << **i << "\n";
++  }
++}
+ 
+ std::string getAsyncFunction(std::string fn) {
+   
+@@ -1806,7 +1837,13 @@ bool isAllocTypeLazyInit(Type *t, bool &single, int &count) {
+      }
+   }
+   if (t->getPrimitiveSizeInBits()) {
+-      count = primArraySize; 
++      //count = primArraySize; 
++      
++      //muqi 256&8 we want the size of array be 256 bytes
++      count == 256*8/t->getPrimitiveSizeInBits();
++      if (count == 0)
++          count = 1;
++      
+       single = false;
+       return true;
+   }
+@@ -1849,7 +1886,14 @@ void collectEmbeddedPointerTypes(Type *t, std::vector<std::string> &lazyTypes, s
+      else if (t->getPrimitiveSizeInBits()) {
+         if (pointerType) {
+            lazyTypes.push_back(rso.str());
+-           lazyInitNumInstances[rso.str()] = primArraySize;
++           //lazyInitNumInstances[rso.str()] = primArraySize;
++	   
++	   //muqi 256&8 we want the size of array be 256 bytes
++	   int temp_count = 256*8/t->getPrimitiveSizeInBits();
++           if (temp_count == 0)
++             temp_count = 1;
++            
++           lazyInitNumInstances[rso.str()] = temp_count;
+         }
+      }
+ 
+@@ -2590,9 +2634,14 @@ void Executor::branch(ExecutionState &state,
+       addConstraint(*result[i], conditions[i]);
+ }
+ 
++//muqi
+ Executor::StatePair 
+ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+ 
++  KInstruction *currentInstruction = current.prevPC;
++  Instruction *i = currentInstruction->inst;
++  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Executor::StatePair Executor::fork");
++  klee_muqi("in the fork of Executor::\n");
+ 
+   Solver::Validity res;
+   std::map< ExecutionState*, std::vector<SeedInfo> >::iterator it = 
+@@ -2621,6 +2670,10 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+       bool success = solver->getValue(current, condition, value);
+       assert(success && "FIXME: Unhandled solver failure");
+       (void) success;
++      //start of symbolic execution 151515
++      klee_muqi("in if condition of !isSeeding && !isa<ConstantExpr>(condition) && \n");
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nIn if condition of !isSeeding && !isa<ConstantExpr>(condition) &&");
++      
+       addConstraint(current, EqExpr::create(value, condition));
+       current.lastConstraint = EqExpr::create(value, condition);
+       condition = value;
+@@ -2653,10 +2706,14 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+         // add constraints
+         if(branch) {
+           res = Solver::True;
++          klee_muqi("in if condition of isSeeding, branch is true \n");
++          klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside fork, First branch");
+           addConstraint(current, condition);
+           current.lastConstraint = condition;
+         } else  {
+           res = Solver::False;
++          klee_muqi("in if condition of isSeeding, branch is false \n");
++          klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside fork, Second branch");
+           addConstraint(current, Expr::createIsZero(condition));
+           current.lastConstraint = Expr::createIsZero(condition);
+         }
+@@ -2680,10 +2737,16 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+ 
+         TimerStatIncrementer timer(stats::forkTime);
+         if (theRNG.getBool()) {
++          klee_muqi("in if condition of not isSeeding, branch is true \n");
++          klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside fork, First branch");
++          
+           addConstraint(current, condition);
+           res = Solver::True;        
+           current.lastConstraint = condition;
+         } else {
++          klee_muqi("in if condition of not isSeeding, branch is false \n");
++          klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside fork, Second branch");
++          
+           addConstraint(current, Expr::createIsZero(condition));
+           res = Solver::False;
+           current.lastConstraint = Expr::createIsZero(condition);
+@@ -2718,6 +2781,9 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+       assert(trueSeed || falseSeed);
+       
+       res = trueSeed ? Solver::True : Solver::False;
++      klee_muqi("in Fix branch in only-replay-seed mode, if we don't have both true \n");
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside fork, Fix branch in only-replay-seed mode");
++      
+       addConstraint(current, trueSeed ? condition : Expr::createIsZero(condition));
+       if (trueSeed)
+          current.lastConstraint = condition;
+@@ -2816,8 +2882,19 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
+       }
+     }
+ 
++    #ifndef Muqi_support_foreverloop
++    klee_muqi("Add constraint for trueStatement final\n");
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nAdd constraint for trueStatement ");
++    #endif
++
+     addConstraint(*trueState, condition);
+     trueState->lastConstraint = condition;
++
++    #ifndef Muqi_support_foreverloop
++    klee_muqi("Add constraint for falseStatement final\n");
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nAdd constraint for falseStatement  ");
++    #endif 
++
+     addConstraint(*falseState, Expr::createIsZero(condition));
+     falseState->lastConstraint = Expr::createIsZero(condition);
+     // Kinda gross, do we even really still want this option?
+@@ -3128,9 +3205,11 @@ void Executor::executeCall(ExecutionState &state,
+       klee_error("unknown intrinsic: %s", f->getName().data());
+     }
+ 
+-    if (InvokeInst *ii = dyn_cast<InvokeInst>(i))
++    if (InvokeInst *ii = dyn_cast<InvokeInst>(i)){
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nfunction declared, executeCall named: %s, transferToBasicBlock ",f->getName().data()); 
+       transferToBasicBlock(ii->getNormalDest(), i->getParent(), state);
+       successorsPaths->insert(&state);
++    }
+   } else {
+ 
+        /* SYSREL extension */
+@@ -3174,9 +3253,14 @@ void Executor::executeCall(ExecutionState &state,
+     // instead of the actual instruction, since we can't make a KInstIterator
+     // from just an instruction (unlike LLVM).
+     KFunction *kf = kmodule->functionMap[f];
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nfunction not declared, executeCall named: %s, state.pc ++ ", f->getName().data());
++    klee_muqi("Inside Executor::executeCall, state.pc before is %d", state.pc);
++
+     state.pushFrame(state.prevPC, kf);
+     state.pc = kf->instructions;
+-
++    
++    klee_muqi("Inside Executor::executeCall, state.pc after is %d", state.pc);
++    
+     if (recordStackTraces)
+        recordStackTrace(state);
+ 
+@@ -3384,11 +3468,96 @@ static inline const llvm::fltSemantics * fpWidthToSemantics(unsigned width) {
+   }
+ }
+ 
++//muqi
++void muqi_transfertoblock_info(BasicBlock *BB_src,BasicBlock *BB_dest,Instruction *inst_src, Instruction *inst_dest){
++      //muqi: add for identifing the block will be executed 
++      Function *Func;
++      if (BB_src){
++        Func = BB_src->getFirstNonPHI()->getFunction();
++        int temp_BB = 0;
++        int BB_src_num = -1;
++        int BB_dest_num = -1;
++        for (Function::iterator BB_temp = Func->begin(), E = Func->end(); BB_temp != E; ++BB_temp) {
++            if (BB_src == (&*BB_temp)){
++              BB_src_num = temp_BB;
++            }
++            if (BB_dest == (&*BB_temp)){
++              BB_dest_num = temp_BB;
++            }
++            temp_BB ++;
++        }
++        klee_muqi_compare_test(Func->getName().data(),"\nTransferTobasic (used for lifter.ll), BB from %d to %d ", BB_src_num, BB_dest_num );
++        //muqi: add end
++        //muqi: have the metadata of line number
++        DILocation *Loc;
++        unsigned Line_src = 2147483647;
++        unsigned Line_des = 2147483647;
++        //find the line info for source of BB
++        if (Loc = BB_src->getFirstNonPHI()->getDebugLoc()) { 
++          Line_src =  Loc->getLine();
++        }
++        //if first line of BB has some errors, find the instruction line being executed.
++        if (Line_src == 2147483647 && inst_src) {
++          if (Loc = inst_src->getDebugLoc()) { 
++            Line_src =  Loc->getLine();
++          }
++        }
++
++        //find the line info for destination of BB
++        if(BB_dest == NULL) {
++          Line_des = 2147483647;
++        }else{
++          if (Loc = BB_dest->getFirstNonPHI()->getDebugLoc()){
++            Line_des =  Loc->getLine();
++          }
++        }
++        
++        if (Line_des == 2147483647 && inst_dest) {
++          if (Loc = inst_dest->getDebugLoc()) { 
++            Line_des =  Loc->getLine();
++          }
++        }
++        klee_muqi_compare_test(Func->getName().data(),"\nTransferTobasic (used for generatedc.ll), Linenumber of instruction in c file from %d to %d ", Line_src, Line_des );
++        klee_muqi("\nTransferTobasic (used for lifter.ll), BB from %d to %d ", BB_src_num, BB_dest_num );
++        klee_muqi("\nTransferTobasic (used for generatedc.ll), Linenumber of instruction in c file from %d to %d ", Line_src, Line_des );
++        //muqi: add end
++      }else {
++        Func = NULL;
++        klee_muqi_compare_test("unknown","\nTransferTobasic (used for lifter.ll), BB from -1 to -1 ");
++        klee_muqi_compare_test("unknown","\nTransferTobasic (used for generatedc.ll), Linenumber of instruction in c file from 2147483647 to 2147483647 ");
++        klee_muqi("\nTransferTobasic (used for lifter.ll), BB from -1 to -1 ");
++        klee_muqi("\nTransferTobasic (used for generatedc.ll), Linenumber of instruction in c file from 2147483647 to 2147483647 ");
++        
++      }
++      
++      
++      
++}
++
++//muqi
++std::vector<Instruction *> vector_i;
++std::vector<ExecutionState *>vector_state;
++std::vector<KInstruction *>vector_ki;
++std::vector<ref<Expr> >vector_constantexpr;
++std::vector<BasicBlock *> vector_BB_symbolized;
++
++
+ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+ 
+   state.stackFrameBeforeExecInst = state.stack.size() - 1; 
+ 
+   Instruction *i = ki->inst;
++
++  //muqi
++  std::string temp_out = i->getOpcodeName();
++  klee_muqi("current instruction for this instruction is %d", state.prevPC);
++  klee_muqi("next instruction for this instruction is %d", state.pc);
++  klee_muqi("current Function name is: %s", i->getFunction()->getName());
++ 
++  klee_muqi("Instruction is: %s; ", temp_out.c_str());
++  const InstructionInfo *temp_info = ki->info;
++  klee_muqi("corresponding assembly line is %d \n", temp_info->assemblyLine);
++
+   switch (i->getOpcode()) {
+     // Control flow
+   case Instruction::Ret: {
+@@ -3402,7 +3571,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+     /* SYSREL EXTENSION */
+     state.checkAndSetPMCallbackCompleted(ri->getParent()->getParent()->getName());
+     /* SYSREL EXTENSION */
+-
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret ");
+     llvm::outs() << "handling return for function " << ri->getParent()->getParent()->getName()  << "\n";
+     if (!isVoidReturn) {
+       result = eval(ki, 0, state).value;
+@@ -3424,6 +3593,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+        generateValuedInstruction(state, ki);
+ 
+     if (state.stack.size() <= 1) {
++      muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++      klee_muqi("\nInside Ret, state.stack.size() is 1\n");
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++      klee_muqi("\nInside Ret, state.pc ++ , state.pc before is %d", state.pc);
++
++
+       assert(!caller && "caller set on initial stack frame");
+       /* SYSREL extension */
+ 
+@@ -3503,6 +3678,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+       }
+       /* SYSREL extension */
+     } else {
++      klee_muqi("\nInside Ret, state.stack.size() is more than one\n");
+       state.stackFrameBeforeExecInst = state.stack.size() - 1; 
+       state.popFrame();
+ 
+@@ -3511,13 +3687,26 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+ 
+       if (InvokeInst *ii = dyn_cast<InvokeInst>(caller)) {
+         llvm::outs() << "returning to basic block of " << (*caller) << "\n";
++        //muqi
++                muqi_transfertoblock_info(caller->getParent(),ii->getNormalDest(),i,caller);
++        klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret transferToBasicBlock ");
++        klee_muqi("\nInside Instruction::Ret transferToBasicBlock ");
++
+         transferToBasicBlock(ii->getNormalDest(), caller->getParent(), state);
+       } else {
++        //muqi
++        muqi_transfertoblock_info(i->getParent(),caller->getParent(),i,caller);
++        klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++        klee_muqi("\nInside Ret, state.pc ++ , state.pc before is %d", state.pc);
++
+         state.pc = kcaller;
+         ++state.pc;
++
++        klee_muqi("\nInside Ret, state.pc ++ , state.pc after is %d", state.pc);
++        
+         llvm::outs() << "returning to " <<  (*state.pc->inst) << "\n"; 
+       }
+-
++      klee_muqi("In ret, Function name is: %s", caller->getFunction()->getName());
+       if (!isVoidReturn) {
+         Type *t = caller->getType();
+         if (t != Type::getVoidTy(i->getContext())) {
+@@ -3544,31 +3733,136 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+         // We check that the return value has no users instead of
+         // checking the type, since C defaults to returning int for
+         // undeclared functions.
+-        /* SYSREL extension */        
+-        llvm::errs() << "Warning: return void when caller expected a result\n";
++        /* SYSREL extension */  
++        //muqi
++        result = ConstantExpr::alloc(0, Expr::Int64);
++        bindLocal(kcaller, state, result);
++        klee_warning("Injected fake return for function: %s",
++                       ri->getFunction()->getName().str().c_str());
++
++        //llvm::errs() << "Warning: return void when caller expected a result\n";
+         /* SYSREL extension */
+       }
+-    }      
++    } 
++
++//muqi
++    if (result.isNull() == true ){
++      result = ConstantExpr::alloc(0, Expr::Int64);
++    }
++    result->dump();
++    #ifdef ENABLE_Z3
++    Z3Builder temp_build = Z3Builder(false,NULL);
++    //Z3ASTHandle result_z3 = temp_build.construct(result);
++    int *width = (int *)malloc(sizeof(int));
++      *width = 0;
++    Z3ASTHandle result_z3 = temp_build.construct_muqi(result,width);
++    llvm::errs()<<"after result dumped, *width is:" << *width<<"\n";
++    if (*width == 1){
++
++      *width = 64;
++      result = SelectExpr::create(result,ConstantExpr::create(1,64),ConstantExpr::create(0,64));
++      result_z3 = temp_build.construct_muqi(result,width);  
++    }
++    while (*width < 64 && *width != 1){
++      //concat the result to 64bits
++        result = ConcatExpr::create(ConstantExpr::create(0,8),result);
++        result_z3 = temp_build.construct_muqi(result,width);  
++        llvm::errs()<<"after result dumped, *width is:" << *width<<"\n";
++    }
++    result_z3.dump();
++    
++    #endif  
++
+     break;
+   }
+   case Instruction::Br: {
+     BranchInst *bi = cast<BranchInst>(i);
+     if (bi->isUnconditional()) {
+-      transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), state);
+-      successorsPaths->insert(&state);
++      //muqi add loopbound here, since the loop use unconditional branch to back to previous label, which generates the loop
++      //possible error??
++      Function *func_unconditon = i->getParent()->getParent(); 
++      bool lbe_uncondition = isLoopBoundExcluded(state.prevPC->getSourceLocation(), func_unconditon->getName());
++      llvm::errs() << "loop bound= " << loopBound  << " excl? " << lbe_uncondition << "\n";
++      
++      if (loopBound && !lbe_uncondition) {
++        unsigned tc;
++        tc = getForkFreq(state, i);
++        showForkfreq(state);
++        addForkFreq(&state, i);
++        if (tc >= loopBound) {
++            llvm::errs() << "path terminated early due to reaching bound for unconditional branches\n";
++            terminateStateEarly(state, "Loop Bound for unconditional reached\n");
++            //muqi, we give a fake return value
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret");
++            //klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++            muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++            ref<Expr> fake_result =NULL;
++            fake_result = ConstantExpr::alloc(0, Expr::Int64);
++            fake_result->dump();
++            Z3Builder temp_build = Z3Builder(false,NULL);
++            int *width = (int *)malloc(sizeof(int));
++            *width = 64;
++            #ifdef ENABLE_Z3
++            Z3ASTHandle fake_result_z3 = temp_build.construct_muqi(fake_result,width);
++            fake_result_z3.dump();
++            #endif
++        }
++        else{
++            klee_muqi("br in Unconditional \n");
++            klee_muqi("br is %d \n", bi);
++            klee_muqi("br transfer from %d to %d\n", bi->getParent(), bi->getSuccessor(0));
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nbr in Unconditional ");
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++            //muqi: add for identifing the block will be executed
++            muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++            transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), state);
++            successorsPaths->insert(&state);
++        }
++     }
++      else{
++        klee_muqi("br in Unconditional \n");
++        klee_muqi("br is %d \n", bi);
++        klee_muqi("br transfer from %d to %d\n", bi->getParent(), bi->getSuccessor(0));
++        klee_muqi_compare_test(i->getFunction()->getName().data(),"\nbr in Unconditional ");
++        klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++        //muqi: add for identifing the block will be executed 
++        muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++        transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), state);
++        successorsPaths->insert(&state);
++      }
++    
+     } else {
+       // FIXME: Find a way that we don't have this hidden dependency.
++      klee_muqi("br in conditional \n");
++      klee_muqi("br is %d \n", bi);
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nbr in conditional ");
+       assert(bi->getCondition() == bi->getOperand(0) &&
+              "Wrong operand index!");
+       ref<Expr> cond = eval(ki, 0, state).value;
++      
++      Expr *temp = cond.get();
++     // cond = optimizer.optimizeExpr(cond, false);
+       Executor::StatePair branches = fork(state, cond, false);
++      
++      #ifdef Muqi_support_foreverloop
++      ref<Expr> cond_to_log = cond;
++      if (branches.first){
++          cond_to_log = branches.first->lastConstraint;          
++      }
++      #endif
+ 
+-      if (branches.first)
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nFork finished");
++      klee_muqi("Fork finished\n");
++      if (branches.first){
+          branches.first->lastBranchInstConstraint = branches.first->lastConstraint;
++         branches.first->history_br_instructions = state.history_br_instructions;
++      }
++      if (branches.second){
+ 
+-      if (branches.second)
+          branches.second->lastBranchInstConstraint = branches.second->lastConstraint;
+-
++      	 branches.second->history_br_instructions = state.history_br_instructions;
++      }
+       // NOTE: There is a hidden dependency here, markBranchVisited
+       // requires that we still be in the context of the branch
+       // instruction (it reuses its statistic id). Should be cleaned
+@@ -3582,7 +3876,18 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+       bool lbe = isLoopBoundExcluded(state.prevPC->getSourceLocation(), func->getName());
+       //llvm::errs() << "loop bound= " << loopBound  << " excl? " << lbe << "\n";
+       if (loopBound && !lbe) {
++	 tc = getForkFreq(state, i);
++         fc = tc;
++        
+          if (branches.first) {
++            addForkFreq(branches.first, i);
++         }
++
++         if (branches.second) {
++            addForkFreq(branches.second, i);
++         }
++	      /*
++	 if (branches.first) {
+             addForkFreq(state,getSourceWithContext(state, state.prevPC), true);
+          }
+ 
+@@ -3591,31 +3896,94 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+          }
+          tc = getForkFreq(state, getSourceWithContext(state, state.prevPC), true);
+          fc = getForkFreq(state, getSourceWithContext(state, state.prevPC), false);
+-         llvm::errs() << "forked at " << state.prevPC->getSourceLocation() << " true branch " << tc << " times\n";
++         */
++	 llvm::errs() << "forked at " << state.prevPC->getSourceLocation() << " true branch " << tc << " times\n";
+          llvm::errs() << "forked at " << state.prevPC->getSourceLocation() << " false branch " << fc << " times\n";
+          
+          if (branches.first && branches.second) {
+-            if (fc > loopBound && tc > loopBound) {
++            vector_BB_symbolized.push_back(i->getParent());
++            llvm:errs() << "i->getParent()" << i->getParent() <<"\n";
++	    if (fc >= loopBound && tc >= loopBound) {
+                // terminate state
+                llvm::errs() << "path terminated early due to reaching bound for both branches\n";
+                terminateStateEarly(state, "Loop Bound for both successors reached\n");
+-            }
++            
++	       //we need to pop the addstates, since in previous fork(), we "addedStates.push_back(falseState);"!!!
++               addedStates.pop_back();
++
++               //muqi, we give a fake return value
++               klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret");
++               //klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++               muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++               klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++               ref<Expr> fake_result =NULL;
++               fake_result = ConstantExpr::alloc(0, Expr::Int64);
++               fake_result->dump();
++               Z3Builder temp_build = Z3Builder(false,NULL);
++               int *width = (int *)malloc(sizeof(int));
++               *width = 64;
++               #ifdef ENABLE_Z3
++               Z3ASTHandle fake_result_z3 = temp_build.construct_muqi(fake_result,width);
++               fake_result_z3.dump();
++               #endif
++	    }
++	    /*
+             else if (tc > loopBound) {
+                llvm::errs() << "path terminated for the true branch\n";
+                terminateStateEarly(*branches.first, "Loop Bound for true successor reached\n");
++
++	       klee_muqi_compare_test(i->getFunction()->getName().data(),"\n1Inside Instruction::Br condition second transferToBasicBlock ");
++               klee_muqi("\nInside Instruction::Br condition second transferToBasicBlock ");
++               //muqi: add for identifing the block will be executed
++               muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(1),i,NULL);
++
+                transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second); 
+                successorsPaths->insert(branches.second);
+             }
+             else if (fc > loopBound) {
+                llvm::errs() << "path terminated for the false branch\n";
+                terminateStateEarly(*branches.second, "Loop Bound for false successor reached\n");
+-               transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
++               
++	       klee_muqi_compare_test(i->getFunction()->getName().data(),"\n2Inside Instruction::Br condition first transferToBasicBlock ");
++               klee_muqi("\nInside Instruction::Br condition first transferToBasicBlock ");
++               //muqi: add for identifing the block will be executed 
++               muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++
++	       transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
+                successorsPaths->insert(branches.first);
+-            }
++            }*/
+             else {
+-               transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
++               
++	       #ifdef Muqi_support_foreverloop		
++               klee_muqi("Add constraint for trueStatement final\n");
++               klee_muqi_compare_test(i->getFunction()->getName().data(),"\nAdd constraint for trueStatement ");
++
++               #if defined(Muqi_DEBUG)
++               cond_to_log->dump();
++               #ifdef ENABLE_Z3
++               Z3Builder temp_build = Z3Builder(false,NULL);
++               Z3ASTHandle result_z3 = temp_build.construct(cond_to_log);
++               result_z3.dump();
++               #endif
++                
++               #endif
++               klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::3Br condition first transferToBasicBlock ");
++               klee_muqi("\nInside Instruction::Br condition first transferToBasicBlock ");
++               //muqi: add for identifing the block will be executed 
++               muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++               #endif 
++
++	       transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
+                successorsPaths->insert(branches.first);
+-               transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
++               
++	       #ifdef Muqi_support_foreverloop
++               klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::4Br condition second transferToBasicBlock ");
++               klee_muqi("\nInside Instruction::Br condition second transferToBasicBlock ");
++               //muqi: add for identifing the block will be executed 
++               muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(1),i,NULL);  
++               #endif 
++	       
++	       transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
+                successorsPaths->insert(branches.second);
+                singleSuccessor = false;
+                bool abort = false;
+@@ -3635,24 +4003,78 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+          }         
+          else {
+             if (branches.first) {
+-               if (tc > loopBound) {
+-                  llvm::errs() << "branching to the false successor due to reaching loop bound for the true branch\n";
+-                  transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.first);
+-                  successorsPaths->insert(branches.first);
++               if (tc >= loopBound) {
++		   //muqi, we give a fake return value
++                   klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret");
++                   //klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++                   muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++                   klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++                   ref<Expr> fake_result =NULL;
++                   fake_result = ConstantExpr::alloc(0, Expr::Int64);
++                   fake_result->dump();
++                   Z3Builder temp_build = Z3Builder(false,NULL);
++                   int *width = (int *)malloc(sizeof(int));
++                   *width = 64;
++                   #ifdef ENABLE_Z3
++                   Z3ASTHandle fake_result_z3 = temp_build.construct_muqi(fake_result,width);
++                   fake_result_z3.dump();
++                   #endif
++                 
++		     //llvm::errs() << "branching to the false successor due to reaching loop bound for the true branch\n";
++                     llvm::errs() << "path terminated for the true branch2 instead of branching to the false successor due to reaching loop bound for the true branch\n";
++                     terminateStateEarly(*branches.first, "Loop Bound for true successor reached\n");
++
++                     //muqi we do not want to run false successor anymore.
++                     //transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.first);
++                     transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
++
++                     //llvm::errs() << "branching to the false successor due to reaching loop bound for the true branch\n";
++                     //transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.first);
++                     successorsPaths->insert(branches.first);
++		   
+                }
+                else {
++		  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::6Br condition first transferToBasicBlock ");
++                  klee_muqi("\nInside Instruction::Br condition first transferToBasicBlock ");
++                  //muqi: add for identifing the block will be executed
++                  muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
+                   transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
+                   successorsPaths->insert(branches.first);  
+                }
+             }
+             if (branches.second) {
+-               if (fc > loopBound) {
+-                  //llvm::errs() << "path terminated for the false branch\n";
+-                  //terminateStateEarly(*branches.second, "Loop Bound for false successor reached\n");                  
++               if (fc >= loopBound) {
++                  //muqi, we give a fake return value
++                  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret");
++                  //klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++                  muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++                  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++                  ref<Expr> fake_result =NULL;
++                  fake_result = ConstantExpr::alloc(0, Expr::Int64);
++                  fake_result->dump();
++                  Z3Builder temp_build = Z3Builder(false,NULL);
++                  int *width = (int *)malloc(sizeof(int));
++                  *width = 64;
++                  #ifdef ENABLE_Z3
++                  Z3ASTHandle fake_result_z3 = temp_build.construct_muqi(fake_result,width);
++                  fake_result_z3.dump();
++                  #endif
++
++		  llvm::errs() << "path terminated for the false branch\n";
++                  terminateStateEarly(*branches.second, "Loop Bound for false successor reached\n");                  
+                   transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.second);
+                   successorsPaths->insert(branches.second);
+                }
+-               else {               
++               else {
++		  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::8Br condition second transferToBasicBlock ");
++                  klee_muqi("\nInside Instruction::Br condition second transferToBasicBlock ");
++                  //muqi: add for identifing the block will be executed
++                  muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++		  //added by muqi to fix double loop
++                  llvm::errs() << "path terminated for the false branch2\n";
++                  //terminateStateEarly(*branches.second, "Loop Bound for false successor reached\n");              
++                  //transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.second);
++                  	       
+                   transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
+                   successorsPaths->insert(branches.second);
+                }
+@@ -3661,10 +4083,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+       }
+       else {
+          if (branches.first) {
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br condition first transferToBasicBlock ");
++            klee_muqi("\nInside Instruction::Br condition first transferToBasicBlock ");
++            //muqi: add for identifing the block will be executed 
++            muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(0),i,NULL);
++            
+             transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
+             successorsPaths->insert(branches.first);
+          }
+          if (branches.second) {
++            klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br condition second transferToBasicBlock ");
++            klee_muqi("\nInside Instruction::Br condition second transferToBasicBlock ");
++            //muqi: add for identifing the block will be executed 
++            muqi_transfertoblock_info(i->getParent(),bi->getSuccessor(1),i,NULL);
++
+             transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
+             successorsPaths->insert(branches.second);
+          }
+@@ -3693,13 +4125,20 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+   }
+   case Instruction::IndirectBr: {
+     // implements indirect branch to a label within the current function
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::IndirectBr");
++    
+     const auto bi = cast<IndirectBrInst>(i);
+     auto address = eval(ki, 0, state).value;
+     address = toUnique(state, address);
+ 
+     // concrete address
+     if (const auto CE = dyn_cast<ConstantExpr>(address.get())) {
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::IndirectBr first transferToBasicBlock ");
++      
+       const auto bb_address = (BasicBlock *) CE->getZExtValue(Context::get().getPointerWidth());
++
++      //muqi: add for identifing the block will be executed 
++      muqi_transfertoblock_info(i->getParent(),bb_address,i,NULL);
+       transferToBasicBlock(bb_address, bi->getParent(), state);
+       successorsPaths->insert(&state);
+       break;
+@@ -3759,6 +4198,10 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+     assert(targets.size() == branches.size());
+     for (std::vector<ExecutionState *>::size_type k = 0; k < branches.size(); ++k) {
+       if (branches[k]) {
++
++        klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::IndirectBr for loop transferToBasicBlock ");
++        //muqi: add for identifing the block will be executed 
++        muqi_transfertoblock_info(i->getParent(),targets[k],i,NULL); 
+         transferToBasicBlock(targets[k], bi->getParent(), *branches[k]);
+         successorsPaths->insert(branches[k]);
+       }
+@@ -3767,6 +4210,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+     break;
+   }
+   case Instruction::Switch: {
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Switch");
++    
+     SwitchInst *si = cast<SwitchInst>(i);
+     ref<Expr> cond = eval(ki, 0, state).value;
+     BasicBlock *bb = si->getParent();
+@@ -3778,6 +4223,13 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+       llvm::IntegerType *Ty = cast<IntegerType>(si->getCondition()->getType());
+       ConstantInt *ci = ConstantInt::get(Ty, CE->getZExtValue());
+       unsigned index = si->findCaseValue(ci).getSuccessorIndex();
++
++
++      klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Switch first transferToBasicBlock ");
++      
++      //muqi: add for identifing the block will be executed 
++      muqi_transfertoblock_info(si->getParent(),si->getSuccessor(index),i,NULL); 
++
+       transferToBasicBlock(si->getSuccessor(index), si->getParent(), state);
+       successorsPaths->insert(&state);
+     } else {
+@@ -3877,6 +4329,11 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+            it != ie; ++it) {
+         ExecutionState *es = *bit;
+         if (es) {
++          klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Switch second transferToBasicBlock ");
++          //muqi: add for identifing the block will be executed
++          muqi_transfertoblock_info(bb,*it,i,NULL); 
++
++
+           transferToBasicBlock(*it, bb, *es);
+           successorsPaths->insert(es); 
+         }
+@@ -3885,14 +4342,35 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+     }
+     break;
+   }
+-  case Instruction::Unreachable:
++  case Instruction::Unreachable:{
+     // Note that this is not necessarily an internal bug, llvm will
+     // generate unreachable instructions in cases where it knows the
+     // program will crash. So it is effectively a SEGV or internal
+     // error.
+-    terminateStateOnExecError(state, "reached \"unreachable\" instruction");
+-    break;
++    //original
++    //terminateStateOnExecError(state, "reached \"unreachable\" instruction");
++    
++    //muqi add for abort()
++    terminateStateEarly(state, "Instruction::Unreachable: termiantes state\n");
++               
++    //muqi, we give a fake return value
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Ret");
++    //klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Instruction::Br uncondition transferToBasicBlock ");
++    muqi_transfertoblock_info(i->getParent(),NULL,i,NULL);
++    klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside Ret state.pc ++");
++    ref<Expr> fake_result =NULL;
++    fake_result = ConstantExpr::alloc(0, Expr::Int64);
++    fake_result->dump();
++    Z3Builder temp_build = Z3Builder(false,NULL);
++    int *width = (int *)malloc(sizeof(int));
++    *width = 64;
++    #ifdef ENABLE_Z3
++    Z3ASTHandle fake_result_z3 = temp_build.construct_muqi(fake_result,width);
++    fake_result_z3.dump();
++    #endif
+ 
++    break;
++  }
+   case Instruction::Invoke:
+   case Instruction::Call: {
+     CallSite cs(i);
+@@ -4283,17 +4761,57 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+  
+     // Memory instructions...
+   case Instruction::Alloca: {
+-    AllocaInst *ai = cast<AllocaInst>(i);
+-    unsigned elementSize = 
+-      kmodule->targetData->getTypeStoreSize(ai->getAllocatedType());
+-    ref<Expr> size = Expr::createPointer(elementSize);
+-    if (ai->isArrayAllocation()) {
+-      ref<Expr> count = eval(ki, 0, state).value;
+-      count = Expr::createZExtToPointerWidth(count);
+-      size = MulExpr::create(size, count);
++    klee_muqi("Inside Allocate case\n");
++
++
++  //muqi change here!!!
++///*
++    Instruction *temp_next = state.pc->inst;
++    //for here, we use a vector to store all alloca instructions at the begining of function, which can be first in first out.
++    //when the last alloca instruction is executed, we allocate all instructions in vector.
++    if (temp_next){
++      unsigned temp_out_next = temp_next->getOpcode();
++      klee_muqi("Next Instruction num is: %u; ", temp_out_next); //alloc == 29 for llvm 3.8, alloc == 31 for llvm 10
++      if (temp_out_next == Instruction::Alloca){
++        klee_muqi(" Here we push to vector\n");
++        vector_i.push_back(i);
++        vector_ki.push_back(ki);
++        vector_state.push_back(&state);
++
++      }else{
++        vector_i.push_back(i);
++        vector_ki.push_back(ki);
++        vector_state.push_back(&state);
++
++        klee_muqi(" Here we allocate all\n");
++        int count = 0;
++        while(!vector_i.empty()){
++              klee_muqi(" count is %u\n",count);
++              count ++;
++              Instruction *temp_i = vector_i.back();
++              vector_i.pop_back();
++              KInstruction *temp_ki = vector_ki.back();
++              vector_ki.pop_back();
++              ExecutionState *temp_state = vector_state.back();
++              vector_state.pop_back();
++
++              AllocaInst *ai = cast<AllocaInst>(temp_i);
++              unsigned elementSize = 
++                kmodule->targetData->getTypeStoreSize(ai->getAllocatedType());
++              ref<Expr> size = Expr::createPointer(elementSize);
++              if (ai->isArrayAllocation()) {
++                ref<Expr> count = eval(temp_ki, 0, *temp_state).value;
++                count = Expr::createZExtToPointerWidth(count);
++                size = MulExpr::create(size, count);
++              }
++              executeAlloc(*temp_state, size, true, temp_ki);
++        }
++      }   
+     }
+-    executeAlloc(state, size, true, ki);
+-    break;
++    else{
++      klee_muqi("SOME HORRIBLE THING WRONG IN ALLOCATE\n");
++    }
++  break;
+   }
+ 
+   case Instruction::Load: {
+@@ -4304,6 +4822,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
+   case Instruction::Store: {
+     ref<Expr> base = eval(ki, 1, state).value;
+     ref<Expr> value = eval(ki, 0, state).value;
++    /*
++    klee_muqi("Inside instruction:store ");
++    klee_muqi("value is ");
++    value.get()->print(errs());
++    errs()<<"\n";
++    klee_muqi("base is ");
++    base.get()->print(errs());
++    errs()<<"\n";
++    */
+     executeMemoryOperation(state, true, base, value, 0);
+     break;
+   }
+@@ -4972,6 +5499,8 @@ void Executor::doDumpStates() {
+ 
+ }
+ 
++int muqi_external_call_function_once = 0;
++
+ void Executor::run(ExecutionState &initialState) {
+   bindModuleConstants();
+ 
+@@ -5136,11 +5665,79 @@ void Executor::run(ExecutionState &initialState) {
+     else {
+     /* SYSREL */
+       KInstruction *ki = state.pc;
++      const InstructionInfo *temp_info = ki->info;
++      
+       stepInstruction(state);
+       singleSuccessor = true;
+       llvm::errs() << "\nnext instruction: " << (*ki->inst) << "\n";
+       ExprPPrinter::printConstraints(llvm::errs(), state.constraints);
+-      executeInstruction(state, ki);
++
++     // executeInstruction(state, ki);
++      //for here, when we face the call instruction in main, skip it and assign 0 as the return result. 
++    #if defined(Muqi_external_call)
++          Instruction *i = ki->inst;
++	  Type *t = i->getType();
++	  if (i->getOpcode() == Instruction::Call){
++                Function *calledFunction = cast<CallInst>(i)->getCalledFunction();
++                if (calledFunction == NULL && !t->isVoidTy()){
++                  //indirect call and non-void return
++                  Expr::Width to = getWidthForLLVMType(t);
++                  ref<Expr> result_temp = ConstantExpr::create(0,to);
++                  bindLocal(ki, state, result_temp);
++                }else if (strncmp(calledFunction->getName().str().c_str(),"SEXT",4)== 0 
++                       || strncmp(calledFunction->getName().str().c_str(),"CONCAT",6)== 0
++                       || strncmp(calledFunction->getName().str().c_str(),"ZEXT",4)== 0
++                       || strncmp(calledFunction->getName().str().c_str(),"SUB",3)== 0){
++                  executeInstruction(state, ki);
++                }else if (calledFunction == NULL && t->isVoidTy()){
++                  //indirect call and void return, just skip it
++                }else if (strcmp(calledFunction->getName().str().c_str(),EntryPoint.c_str())!= 0 && !t->isVoidTy()){
++                  //direct call and non-void return and name is not same as current function
++                  Expr::Width to = getWidthForLLVMType(t);
++                  ref<Expr> result_temp = ConstantExpr::create(0,to);
++                  bindLocal(ki, state, result_temp);
++                }else if (strcmp(calledFunction->getName().str().c_str(),EntryPoint.c_str())!= 0 && t->isVoidTy()){
++                  //direct call and void return and name is not same as current function
++                }else if (strcmp(calledFunction->getName().str().c_str(),EntryPoint.c_str())== 0 && !t->isVoidTy()){
++                  //direct call and void return and name is same as current function
++                  Expr::Width to = getWidthForLLVMType(t);
++                  ref<Expr> result_temp = ConstantExpr::create(0,to);
++                  bindLocal(ki, state, result_temp);
++                }else if (strcmp(calledFunction->getName().str().c_str(),EntryPoint.c_str())!= 0 && !t->isVoidTy()){
++                  //direct call and void return and name is same as current function
++                }else{
++
++                }
++          }else{
++              executeInstruction(state, ki);
++          }
++	  /*
++          if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())!= 0 && !t->isVoidTy() ) {     
++              Expr::Width to = getWidthForLLVMType(t);
++              ref<Expr> result_temp = ConstantExpr::create(0,to);
++              bindLocal(ki, state, result_temp);
++          }else {
++	     if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())== 0  && muqi_external_call_function_once == 0 && t->isVoidTy()){
++                muqi_external_call_function_once += 1;
++                //executeInstruction(state, ki);
++              }else if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())== 0  && muqi_external_call_function_once != 0 &&  t->isVoidTy()){
++                muqi_external_call_function_once += 1;
++              }else if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())!= 0 &&  t->isVoidTy()){
++              }else if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())== 0  && muqi_external_call_function_once == 0 && !t->isVoidTy()){
++                muqi_external_call_function_once += 1;
++                Expr::Width to = getWidthForLLVMType(t);
++                ref<Expr> result_temp = ConstantExpr::create(0,to);
++                bindLocal(ki, state, result_temp);
++              }else if (i->getOpcode() == Instruction::Call && strcmp(cast<CallInst>(i)->getCalledFunction()->getName().str().c_str(),EntryPoint.c_str())== 0  && muqi_external_call_function_once != 0 &&  !t->isVoidTy()){
++                muqi_external_call_function_once += 1;
++              }
++              else {
++                executeInstruction(state, ki);
++              }
++              //executeInstruction(state, ki);
++          }*/
++    #endif
++      
+       if (RecordValueFlow)
+          generateValuedInstruction(state, ki);
+       /* SYSREL extension */
+@@ -5976,7 +6573,11 @@ void Executor::executeAlloc(ExecutionState &state,
+                             KInstruction *target,
+                             bool zeroMemory,
+                             bool record,
+-                            const ObjectState *reallocFrom) {
++                            const ObjectState *reallocFrom
++                            //muqi change here!!!
++                            ,bool is_instruction_alloc_last,
++                            ref<ConstantExpr> for_last,
++                            bool is_instruction_alloc) {
+   llvm::outs() << "Alloc'ing...\n";
+   size = toUnique(state, size);
+   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(size)) {
+@@ -5986,7 +6587,7 @@ void Executor::executeAlloc(ExecutionState &state,
+     LLVMContext &ctx = moduleHandle->getContext();
+     MemoryObject *mo =
+         memory->allocate(CE->getZExtValue(), isLocal, /*isGlobal=*/false,
+-                         allocSite, allocationAlignment, CE->getZExtValue(), Type::getInt8Ty(ctx));
++                         allocSite, allocationAlignment, CE->getZExtValue(), Type::getInt8Ty(ctx),is_instruction_alloc_last,is_instruction_alloc);
+     recordMemObj(state, mo);
+     /* SYSREL extension */
+ 
+@@ -6327,6 +6928,7 @@ bool Executor::executeCheckAddressInBound(ExecutionState &state,
+             memoryerror = false;  
+          } 
+          else {
++            //muqi we do not handle this out of bound pointer
+             llvm::errs() << "Offending address " << address << "\n";
+             std::string s;
+             llvm::raw_string_ostream ors(s);
+@@ -6337,6 +6939,7 @@ bool Executor::executeCheckAddressInBound(ExecutionState &state,
+             //terminateStateOnError(*unbound, "memory error: out of bound pointer", Ptr,
+ 	    //NULL, getAddressInfo(*unbound, address));
+             memoryerror = true; 
++          
+         }
+      }
+      return false;
+@@ -6439,6 +7042,8 @@ ref<Expr> Executor::performLazyInit(ExecutionState &state,
+       Type *t = li->getPointerOperand()->getType();
+       int count = 0;
+       lazyInitTemp = isLazyInit(t, singleInstance, count);
++      //added by muqi
++      lazyInitTemp = false;
+       if (!lazyInitTemp && ForwardTypeInference) {
+          // let's check if the loaded value might be converted to a pointer soon
+          Type *ptype = checkPossiblePtrCast(target->inst);
+@@ -6754,12 +7359,13 @@ bool Executor::executeMemoryOperation(ExecutionState &state,
+        }
+   }
+ 
++  /*
+   if (!craftedResList) {
+      solver->setTimeout(coreSolverTimeout);
+      incomplete = state.addressSpace.resolve(state, solver, address, rl,
+                                                0, coreSolverTimeout);
+      solver->setTimeout(0);
+-  }
++  }*/
+   
+   // XXX there is some query wasteage here. who cares?
+   ExecutionState *unbound = &state;
+@@ -6767,7 +7373,7 @@ bool Executor::executeMemoryOperation(ExecutionState &state,
+   const MemoryObject *emo = op.first;
+   //llvm::errs() << "unresolved address=" << address << "\n";
+ 
+-  int unboundResolLimit = 3;
++  int unboundResolLimit = 0;
+   int resC = 0;
+   llvm::errs() << "resolution size=" << rl.size() << "\n";
+   for (ResolutionList::iterator i = rl.begin(), ie = rl.end(); resC < unboundResolLimit && i != ie; ++i, resC++) {
+@@ -6838,8 +7444,60 @@ bool Executor::executeMemoryOperation(ExecutionState &state,
+       state.dumpStack(ors);
+       llvm::outs() << ors.str() ;
+       ExprPPrinter::printConstraints(llvm::outs(), state.constraints);
++
++
++      //when we find a out of bound pointer, we 
++      // create a local variable and 
++      // allocate a constant 100 byte size to it  
++      // set zeroMemory as false
++      #if defined(Muqi_external_call)
++          //bool zeroMemory = false;
++          bool zeroMemory = true;
++          ref<Expr> size ;
++          ref<Expr> value ;
++          if (target){
++            Instruction *target_i = target->inst; 
++            Type *t_external = target_i->getType();  
++            Expr::Width to = getWidthForLLVMType(t_external);
++            size = ConstantExpr::create(to,64);
++            value = ConstantExpr::create(0,to);
++          }else{
++            size = ConstantExpr::create(32,64);
++            value = ConstantExpr::create(0,32);
++          }
++          
++          
++          ConstantExpr *CE = dyn_cast<ConstantExpr>(size);
++          const llvm::Value *allocSite = state.prevPC->inst;
++          size_t allocationAlignment = 8;
++          
++          if (allocationAlignment == 0) {
++            allocationAlignment = getAllocationAlignment(allocSite);
++          }
++          
++          MemoryObject *mo =
++              memory->allocate(CE->getZExtValue(), /*isLocal=*/true, /*isGlobal=*/false,
++                              allocSite, allocationAlignment,false,false);
++
++          if (!mo) {
++              //bindLocal(target, state,size);
++            } else {
++              ObjectState *os = bindObjectInState(state, mo, /*isLocal=*/true);
++              if (zeroMemory) {
++                os->initializeToZero();
++              } else {
++                os->initializeToRandom();
++              }
++	      if (target){
++              bindLocal(target, state, value);
++	      }
++            }
++      #endif
++              
++      #if !defined(Muqi_external_call)
+       terminateStateOnError(*unbound, "memory error: out of bound pointer", Ptr,
+                             NULL, getAddressInfo(*unbound, address));
++                            #endif
+     }
+   }
+   return false;
+@@ -7045,6 +7703,7 @@ void Executor::initArgsAsSymbolic(ExecutionState &state, Function *entryFunc, bo
+      std::string type_str;
+      llvm::raw_string_ostream rso(type_str);
+      at->print(rso);
++     std::string name_of_args = std::string("prompt_args_") + std::to_string(ind) +std::string("_args_end");
+      if (at->isPointerTy()) {
+         llvm::outs() << "arg " << ind << " type " << rso.str() << "\n";
+         at = at->getPointerElementType();
+@@ -7080,14 +7739,20 @@ void Executor::initArgsAsSymbolic(ExecutionState &state, Function *entryFunc, bo
+               //mo = memory->allocateForLazyInit(state, state.prevPC->inst, at, singleInstance, count, laddr);
+               llvm::outs() << "is arg " << ind <<  " type " << rso.str() << " single instance? " << singleInstance << "\n";
+               llvm::outs() << "to be made symbolic? " << mksym << "\n";
+-              mo->name = state.getUnique(entryFunc->getName().str() + std::string("_arg_") + std::to_string(ind));
++              //mo->name = state.getUnique(entryFunc->getName().str() + std::string("_arg_") + std::to_string(ind));
++              mo -> name = name_of_args;
+               if (!nosym && mksym) {
+-                 ObjectState *mos = executeMakeSymbolic(state, mo, 
++               /* 
++                ObjectState *mos = executeMakeSymbolic(state, mo, 
+                                      entryFunc->getName().str() + 
+                                            std::string("_arg_") + 
+                                                 std::to_string(ind),
+                                      true, at, true, count);
+- 
++                */
++                ObjectState *mos = executeMakeSymbolic(state, mo, 
++                                     name_of_args,
++                                     true, at, true, count);
++               
+                  // first simple equalities get applied..
+                  applyDataConstraintToArray(state, solver, mo, mos,0, count, true); 
+                  // then other constraints
+@@ -7122,10 +7787,17 @@ void Executor::initArgsAsSymbolic(ExecutionState &state, Function *entryFunc, bo
+         }
+         else 
+            allocsize = dl.getTypeAllocSize(at); 
++        //muqi we change here, no matter what happens, size being allocated is 64 bits/ 8 bytes.
++	//muqi 256&8 we want the size of array be 256 bytes, input type be 8 bytes
++        allocsize = 8;
++
++        //llvm::outs() << "allocsize is:" << allocsize << " \n"; 
++        
+         MemoryObject *mo =  memory->allocate(allocsize, false, /*true*/false, inst, 
+                                    allocationAlignment, 1, at);
+         recordMemObj(state, mo);
+-        mo->name = state.getUnique(entryFunc->getName().str()) + std::string("_arg_") + std::to_string(ind);
++        //mo->name = state.getUnique(entryFunc->getName().str()) + std::string("_arg_") + std::to_string(ind);
++        mo->name = name_of_args;
+         std::string uniqueName = mo->name;
+         // we're mimicking what executeMemoryOperation do without a relevant load or store instruction
+         const Array *array = arrayCache.CreateArray(uniqueName, mo->size);
+diff --git a/lib/Core/Executor.h b/lib/Core/Executor.h
+index ab91659..979d39b 100755
+--- a/lib/Core/Executor.h
++++ b/lib/Core/Executor.h
+@@ -423,14 +423,19 @@ private:
+ 
+   void generateValuedInstruction(ExecutionState &state, KInstruction *ki);
+ 
+-
++//muqi change zeroMemory = false, to zeroMemory = true
+   void executeAlloc(ExecutionState &state,
+                     ref<Expr> size,
+                     bool isLocal,
+                     KInstruction *target,
+-                    bool zeroMemory=false,
++                    bool zeroMemory=true,
+                     bool record = false,
+-                    const ObjectState *reallocFrom=0);
++                    const ObjectState *reallocFrom=0
++                    //muqi change here!!!
++                    ,bool is_instruction_alloc_last=false,
++                    ref<ConstantExpr> for_last=ConstantExpr::create(0,64),
++                    bool is_instruction_alloc=false
++                    );
+   /* SYSREL extension */
+   void executeAllocThread(ExecutionState &state,
+                             ref<Expr> size,
+diff --git a/lib/Core/MemoryManager.cpp b/lib/Core/MemoryManager.cpp
+index 6de948b..fd2ec1c 100755
+--- a/lib/Core/MemoryManager.cpp
++++ b/lib/Core/MemoryManager.cpp
+@@ -74,11 +74,13 @@ void recordMemObj(ExecutionState &state, const MemoryObject *mo) {
+     }
+ }
+ 
++//muqi
+ namespace {
+ llvm::cl::opt<bool> DeterministicAllocation(
+     "allocate-determ",
+     llvm::cl::desc("Allocate memory deterministically(default=off)"),
+-    llvm::cl::init(false));
++    llvm::cl::init(true));
++//    llvm::cl::init(false));
+ 
+ llvm::cl::opt<unsigned> DeterministicAllocationSize(
+     "allocate-determ-size",
+@@ -96,13 +98,18 @@ llvm::cl::opt<unsigned> RedZoneSpace(
+     "red-zone-space",
+     llvm::cl::desc("Set the amount of free space between allocations. This is "
+                    "important to detect out-of-bound accesses (default=10)."),
+-    llvm::cl::init(10));
++  //  llvm::cl::init(10));
++     llvm::cl::init(0));
+ 
+ llvm::cl::opt<unsigned long long> DeterministicStartAddress(
+     "allocate-determ-start-address",
+-    llvm::cl::desc("Start address for deterministic allocation. Has to be page "
++   /* llvm::cl::desc("Start address for deterministic allocation. Has to be page "
+                    "aligned (default=0x7ff30000000)."),
+     llvm::cl::init(0x7ff30000000));
++   */
++    llvm::cl::desc("Start address for deterministic allocation. Has to be page "
++                   "aligned (default=0x0)."),
++    llvm::cl::init(0x0));
+ }
+ 
+ /***/
+@@ -302,7 +309,9 @@ const MemoryObject *MemoryManager::allocateLazyForTypeOrEmbeddingSimple(Executio
+         llvm::errs() << "allocation size for void type: " << allocsize << " times " << count << "\n"; 
+      }
+      llvm::outs() << "allocation size: " << allocsize*count << "\n"; 
+-     mo = allocate(allocsize*count, false, /*true*/false, inst, allocationAlignment, count, allocType);
++     ///muqi 256&8 we want the size of array be 256 bytes, input type be 8 bytes
++     mo = allocate(256, false, /*true*/false, inst, allocationAlignment, count, allocType);
++     //mo = allocate(allocsize*count, false, /*true*/false, inst, allocationAlignment, count, allocType);
+      recordMemObj(state, mo);
+      resaddr = mo->getBaseExpr();
+      rallocType = allocType;
+@@ -495,10 +504,14 @@ MemoryObject *MemoryManager::allocateForLazyInit(ExecutionState &state, llvm::In
+ }
+ /* SYSREL extension */
+ 
++//muqi
+ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+                                       bool isGlobal,
+                                       const llvm::Value *allocSite,
+-                                      size_t alignment) {
++                                      size_t alignment,
++                                      bool is_instruction_alloc_last,
++                                      bool is_instruction_alloc
++                                      ) {
+   if (size > 10 * 1024 * 1024)
+     klee_warning_once(0, "Large alloc: %" PRIu64
+                          " bytes.  KLEE may run out of memory.",
+@@ -513,7 +526,12 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+     return 0;
+   }
+ 
++   klee_muqi("In MemoryManager::allocate, after two return 0");
+   uint64_t address = 0;
++   
++   //muqi change here!!!
++  alignment = 1;
++
+   if (DeterministicAllocation) {
+ #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 9)
+     address = llvm::alignTo((uint64_t)nextFreeSlot + alignment - 1, alignment);
+@@ -526,7 +544,8 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+     // This way, we make sure we have this allocation between its own red zones
+     size_t alloc_size = std::max(size, (uint64_t)1);
+     if ((char *)address + alloc_size < deterministicSpace + spaceSize) {
+-      nextFreeSlot = (char *)address + alloc_size + RedZoneSpace;
++      //nextFreeSlot = (char *)address + alloc_size + RedZoneSpace;
++      nextFreeSlot = (char *)address + alloc_size;
+     } else {
+       klee_warning_once(0, "Couldn't allocate %" PRIu64
+                            " bytes. Not enough deterministic space left.",
+@@ -557,7 +576,15 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+   llvm::outs() << "Allocated object of size " << size << " at address " << address << "\n";
+   llvm::outs() << "Basexpr=" << res->getBaseExpr() << "\n";
+ 
+-  objects.insert(res);
++//muqi change here!!!
++  if(is_instruction_alloc){
++    if(is_instruction_alloc_last){
++      objects.insert(res);
++    }
++  }else{
++    objects.insert(res);
++  }
++  
+   /* SYSREL EXTENSION */
+   if (staticAllocStatTracking)
+      staticAlloc++; 
+@@ -567,11 +594,15 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+ 
+ }
+ 
++//muqi
+ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+                                       bool isGlobal,
+                                       const llvm::Value *allocSite,
+                                       size_t alignment, unsigned count, 
+-                                      llvm::Type *t) {
++                                      llvm::Type *t,
++                                      bool is_instruction_alloc_last,
++                                      bool is_instruction_alloc
++                                      ) {
+   if (size > 10 * 1024 * 1024)
+     klee_warning_once(0, "Large alloc: %" PRIu64
+                          " bytes.  KLEE may run out of memory.",
+@@ -586,7 +617,11 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+     return 0;
+   }
+ 
++   
++    klee_muqi("In MemoryManager::allocate, after two return 0");
+   uint64_t address = 0;
++
++
+   if (DeterministicAllocation) {
+ #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 9)
+     address = llvm::alignTo((uint64_t)nextFreeSlot + alignment - 1, alignment);
+@@ -599,7 +634,8 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+     // This way, we make sure we have this allocation between its own red zones
+     size_t alloc_size = std::max(size, (uint64_t)1);
+     if ((char *)address + alloc_size < deterministicSpace + spaceSize) {
+-      nextFreeSlot = (char *)address + alloc_size + RedZoneSpace;
++      //nextFreeSlot = (char *)address + alloc_size + RedZoneSpace;
++      nextFreeSlot = (char *)address + alloc_size;
+     } else {
+       klee_warning_once(0, "Couldn't allocate %" PRIu64
+                            " bytes. Not enough deterministic space left.",
+@@ -630,7 +666,14 @@ MemoryObject *MemoryManager::allocate(uint64_t size, bool isLocal,
+   llvm::errs() << "Basexpr=" << res->getBaseExpr() << "\n";
+   llvm::errs() << "Basetype=" << getTypeName(t) << "\n";
+ 
+-  objects.insert(res);
++    //muqi change here!!!
++  if(is_instruction_alloc){
++    if(is_instruction_alloc_last){
++      objects.insert(res);
++    }
++  }else{
++    objects.insert(res);
++  }
+   /* SYSREL EXTENSION */
+   if (staticAllocStatTracking)
+      staticAlloc++; 
+diff --git a/lib/Core/MemoryManager.h b/lib/Core/MemoryManager.h
+index bceaa10..d86f7f7 100755
+--- a/lib/Core/MemoryManager.h
++++ b/lib/Core/MemoryManager.h
+@@ -46,11 +46,22 @@ public:
+    * memory.
+    */
+   // keeping for old code
++
++  //muqi
+   MemoryObject *allocate(uint64_t size, bool isLocal, bool isGlobal,
+-                         const llvm::Value *allocSite, size_t alignment); 
++                         const llvm::Value *allocSite, size_t alignment,
++                         bool is_instruction_alloc_last = false,
++                            bool is_instruction_alloc = false);
+   MemoryObject *allocate(uint64_t size, bool isLocal, bool isGlobal,
+                          const llvm::Value *allocSite, size_t alignment, 
+-                         unsigned count, llvm::Type *type);
++                         unsigned count, llvm::Type *type,
++                         bool is_instruction_alloc_last = false,
++                            bool is_instruction_alloc = false);  
++ // MemoryObject *allocate(uint64_t size, bool isLocal, bool isGlobal,
++  //                       const llvm::Value *allocSite, size_t alignment); 
++  //MemoryObject *allocate(uint64_t size, bool isLocal, bool isGlobal,
++    //                     const llvm::Value *allocSite, size_t alignment, 
++      //                   unsigned count, llvm::Type *type);                      
+   MemoryObject *allocateFixed(uint64_t address, uint64_t size,
+                               const llvm::Value *allocSite);
+ 
+diff --git a/lib/Core/SpecialFunctionHandler.cpp b/lib/Core/SpecialFunctionHandler.cpp
+index c6a1fe2..867fe8d 100755
+--- a/lib/Core/SpecialFunctionHandler.cpp
++++ b/lib/Core/SpecialFunctionHandler.cpp
+@@ -285,6 +285,9 @@ bool SpecialFunctionHandler::handle(ExecutionState &state,
+                                     KInstruction *target,
+                                     std::vector< ref<Expr> > &arguments) {
+   handlers_ty::iterator it = handlers.find(f);
++
++  //muqi
++  klee_muqi("Inside SpecialFunctionHandler::handle, function name is %s", f->getName());
+   if (it != handlers.end()) {    
+     Handler h = it->second.first;
+     bool hasReturnValue = it->second.second;
+@@ -506,6 +509,12 @@ void SpecialFunctionHandler::handleMalloc(ExecutionState &state,
+ void SpecialFunctionHandler::handleAssume(ExecutionState &state,
+                             KInstruction *target,
+                             std::vector<ref<Expr> > &arguments) {
++
++  //muqi
++  KInstruction *currentInstruction = state.prevPC;
++  Instruction *i = target->inst;
++  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside SpecialFunctionHandler::handleAssume");
++
+   assert(arguments.size()==1 && "invalid number of arguments to klee_assume");
+   
+   ref<Expr> e = arguments[0];
+@@ -805,7 +814,11 @@ void SpecialFunctionHandler::handleGetValue(ExecutionState &state,
+                                             std::vector<ref<Expr> > &arguments) {
+   assert(arguments.size()==1 &&
+          "invalid number of arguments to klee_get_value");
+-
++  
++  //muqi
++  Instruction *i = target->inst;
++  klee_muqi_compare_test(i->getFunction()->getName().data(),"\nInside SpecialFunctionHandler::handleGetValue");
++ 
+   executor.executeGetValue(state, arguments[0], target);
+ }
+ 
+diff --git a/lib/Core/UserSearcher.cpp b/lib/Core/UserSearcher.cpp
+index 2759132..2459f5d 100755
+--- a/lib/Core/UserSearcher.cpp
++++ b/lib/Core/UserSearcher.cpp
+@@ -36,7 +36,8 @@ namespace {
+ 			clEnumValN(Searcher::NURS_CPICnt, "nurs:cpicnt", "use NURS with CallPath-Instr-Count"),
+ 			clEnumValN(Searcher::NURS_QC, "nurs:qc", "use NURS with Query-Cost"),
+                         clEnumValN(Searcher::NURS_CustomWeight, "nurs:cusw", "use NURS with custom weight")
+-			KLEE_LLVM_CL_VAL_END));
++			KLEE_LLVM_CL_VAL_END)
++      );
+ 
+   cl::opt<bool>
+   UseIterativeDeepeningTimeSearch("use-iterative-deepening-time-search", 
+diff --git a/lib/Expr/Constraints.cpp b/lib/Expr/Constraints.cpp
+index 1b3ad98..e1c470a 100755
+--- a/lib/Expr/Constraints.cpp
++++ b/lib/Expr/Constraints.cpp
+@@ -20,6 +20,17 @@
+ 
+ using namespace klee;
+ 
++
++//muqi
++#ifdef ENABLE_Z3
++#include "./Z3Builder.h"
++#endif
++using namespace llvm;
++using namespace llvm::sys;
++
++#define Muqi_support_foreverloop
++#define Muqi_DEBUG;
++
+ namespace {
+   llvm::cl::opt<bool>
+   RewriteEqualities("rewrite-equalities",
+@@ -72,6 +83,10 @@ public:
+   }
+ };
+ 
++
++//muqi
++//#define Muqi_DEBUG;
++
+ bool ConstraintManager::rewriteConstraints(ExprVisitor &visitor) {
+   ConstraintManager::constraints_ty old;
+   bool changed = false;
+@@ -83,6 +98,35 @@ bool ConstraintManager::rewriteConstraints(ExprVisitor &visitor) {
+     ref<Expr> e = visitor.visit(ce);
+ 
+     if (e!=ce) {
++      //muqi
++      //dump constraints here now
++      #ifndef Muqi_support_foreverloop
++      #if defined(Muqi_DEBUG)
++      /*
++      std::string Path = klee_muqi_compare_file_path;
++      std::error_code EC;
++      //llvm::sys::fs::OpenFlags F_Append;
++      fs::OpenFlags Flags = (fs::OpenFlags)2;
++
++      llvm::raw_fd_ostream *example_ostream = new llvm::raw_fd_ostream(Path, EC, Flags);
++      */
++      
++
++      e->dump();
++      #ifdef ENABLE_Z3
++      Z3Builder temp_build = Z3Builder(false,NULL);
++      Z3ASTHandle result_z3 = temp_build.construct(e);
++      result_z3.dump();
++      #endif
++      /*
++      mtx.lock(); 
++      (*example_ostream) << "\n----dump end----\n" ; 
++      mtx.unlock(); 
++    
++      delete example_ostream;
++      */
++      #endif
++      #endif 
+       addConstraintInternal(e); // enable further reductions
+       changed = true;
+     } else {
+@@ -164,5 +208,35 @@ void ConstraintManager::addConstraintInternal(ref<Expr> e) {
+ 
+ void ConstraintManager::addConstraint(ref<Expr> e) {
+   e = simplifyExpr(e);
++
++    //dump constraints here now
++  #ifndef Muqi_support_foreverloop
++  #if defined(Muqi_DEBUG)
++  /*
++  std::string Path = klee_muqi_compare_file_path;
++  std::error_code EC;
++  //llvm::sys::fs::OpenFlags F_Append;
++  fs::OpenFlags Flags = (fs::OpenFlags)2;
++
++  llvm::raw_fd_ostream *example_ostream = new llvm::raw_fd_ostream(Path, EC, Flags);
++  */
++  
++
++  e->dump();
++  #ifdef ENABLE_Z3
++  Z3Builder temp_build = Z3Builder(false,NULL);
++  Z3ASTHandle result_z3 = temp_build.construct(e);
++  result_z3.dump();
++  #endif
++  /*
++  mtx.lock(); 
++  (*example_ostream) << "\n----dump end----\n" ; 
++  mtx.unlock(); 
++ 
++  delete example_ostream;
++   */
++  #endif
++  #endif
++
+   addConstraintInternal(e);
+ }
+diff --git a/lib/Expr/Expr.cpp b/lib/Expr/Expr.cpp
+index f73d161..7c7f00b 100755
+--- a/lib/Expr/Expr.cpp
++++ b/lib/Expr/Expr.cpp
+@@ -24,6 +24,12 @@
+ using namespace klee;
+ using namespace llvm;
+ 
++//muqi
++#include "klee/Internal/Support/ErrorHandling.h"
++#include "llvm/ADT/SmallString.h"
++#include <time.h>
++using namespace llvm::sys;
++
+ namespace {
+   cl::opt<bool>
+   ConstArrayOpt("const-array-opt",
+@@ -32,6 +38,11 @@ namespace {
+ }
+ 
+ /***/
++namespace klee {
++    std::string klee_muqi_compare_file_path;
++    std::mutex mtx;
++    //int test;
++}
+ 
+ unsigned Expr::count = 0;
+ 
+@@ -311,9 +322,47 @@ void Expr::print(llvm::raw_ostream &os) const {
+   ExprPPrinter::printSingleExpr(os, const_cast<Expr*>(this));
+ }
+ 
++//muqi
++#define Muqi_DEBUG;
++
+ void Expr::dump() const {
+-  this->print(errs());
+-  errs() << "\n";
++ #if defined(Muqi_DEBUG)
++   
++  //this->print(errs());
++  //errs()<<"\n";
++  
++  //https://stackoverflow.com/questions/65000322/creating-raw-ostream-object-in-llvm
++  //https://stackoverflow.com/questions/26317177/how-to-redirect-llvmouts-to-file
++  //add sleep to avoid IO failure on output
++  struct timespec ts;
++  long msec = 1;
++  ts.tv_sec = msec / 1000;
++  ts.tv_nsec = (msec % 1000) * 1000000;
++  nanosleep(&ts, &ts);
++  //test ++;
++  //klee_muqi_compare(std::to_string(test).c_str());
++  std::string Path = klee_muqi_compare_file_path;
++  std::error_code EC;
++  //llvm::sys::fs::OpenFlags F_Append;
++   fs::OpenFlags Flags = (fs::OpenFlags)2;
++
++  //llvm::raw_ostream *out = &outs();
++  llvm::raw_fd_ostream *example_ostream = new llvm::raw_fd_ostream(Path, EC, Flags);
++  //out = example_ostream;
++  if(EC)
++    errs() << "Error opening " << Path << "\n";
++  (*example_ostream)  << "\n----dump expr start----\n" ;
++  //mtx.lock(); 
++  this->print(*example_ostream);
++  //this->print(outs());
++  //mtx.unlock();
++  //example_ostream << std::to_string(test).c_str() <<"\n" ; 
++  (*example_ostream) << "\n----dump expr end----\n" ; 
++  
++  nanosleep(&ts, &ts);
++  delete example_ostream;
++  
++  #endif
+ }
+ 
+ /***/
+diff --git a/lib/Prose/Prose.cpp b/lib/Prose/Prose.cpp
+index caf2b85..c99ac24 100644
+--- a/lib/Prose/Prose.cpp
++++ b/lib/Prose/Prose.cpp
+@@ -492,13 +492,13 @@ bool applyEquality(BoundAST &bast, const MemoryObject *mo, ObjectState *obj,
+    ASTNode *n2 = bast.ast->getChild(1);
+    ref<Expr> value = NULL;
+    unsigned width = getWidth(bast,bast.ast,st);
+-   if (dynamic_cast<ConstantNode*>(n1)) {
++   if (static_cast<ConstantNode*>(n1)) {
+       value = ConstantExpr::alloc(((ConstantNode*)n1)->value, width);
+    }
+-   if (dynamic_cast<ConstantNode*>(n2)) {
++   if (static_cast<ConstantNode*>(n2)) {
+       value = ConstantExpr::alloc(((ConstantNode*)n2)->value, width);
+    }
+-   if (dynamic_cast<IdentifierNode*>(n1)) {
++   if (static_cast<IdentifierNode*>(n1)) {
+       IdentifierNode *in1 = (IdentifierNode*)n1;
+       Binding b1 = bast.bindings[in1->value];
+       unsigned o = sl->getElementOffset(b1.index);
+@@ -520,7 +520,7 @@ bool applyEquality(BoundAST &bast, const MemoryObject *mo, ObjectState *obj,
+         }
+       }
+    }
+-   if (dynamic_cast<IdentifierNode*>(n2)) {
++   if (static_cast<IdentifierNode*>(n2)) {
+       IdentifierNode *in2 = (IdentifierNode*)n2;
+       Binding b2 = bast.bindings[in2->value];
+       unsigned o = sl->getElementOffset(b2.index);
+@@ -546,7 +546,7 @@ bool applyEquality(BoundAST &bast, const MemoryObject *mo, ObjectState *obj,
+ 
+    
+    bool wrote = false;
+-   if (dynamic_cast<IdentifierNode*>(n1)) {
++   if (static_cast<IdentifierNode*>(n1)) {
+       IdentifierNode *in1 = (IdentifierNode*)n1;
+       Binding b1 = bast.bindings[in1->value];
+       unsigned o = sl->getElementOffset(b1.index);
+@@ -557,7 +557,7 @@ bool applyEquality(BoundAST &bast, const MemoryObject *mo, ObjectState *obj,
+                       << baseOffset + o << " in " << mo->getBaseExpr() << "\n";
+       }
+    }
+-   if (dynamic_cast<IdentifierNode*>(n2)) {
++   if (static_cast<IdentifierNode*>(n2)) {
+       IdentifierNode *in2 = (IdentifierNode*)n2;
+       Binding b2 = bast.bindings[in2->value];
+       unsigned o = sl->getElementOffset(b2.index);
+@@ -680,11 +680,11 @@ ref<Expr> generateExp(BoundAST &bast, ASTNode *n, const MemoryObject *mo, const
+       return res;
+    }
+    else if (n->oper == NOOP) {
+-      if (dynamic_cast<ConstantNode*>(n)) {
++      if (static_cast<ConstantNode*>(n)) {
+          res = ConstantExpr::alloc(((ConstantNode*)n)->value, width);
+          return res;          
+       }
+-      else if (dynamic_cast<IdentifierNode*>(n)) {
++      else if (static_cast<IdentifierNode*>(n)) {
+          IdentifierNode *in = (IdentifierNode*)n;
+          Binding b = bast.bindings[in->value];
+          unsigned o = sl->getElementOffset(b.index);
+@@ -713,7 +713,7 @@ ref<Expr> generateExp(BoundAST &bast, ASTNode *n, const MemoryObject *mo, const
+ }
+ 
+ unsigned getWidth(BoundAST &bast,ASTNode *n,const StructType *st) {
+-  if (dynamic_cast<IdentifierNode*>(n)) {
++  if (static_cast<IdentifierNode*>(n)) {
+      IdentifierNode *in = (IdentifierNode*)n;
+      Binding b = bast.bindings[in->value];
+      Type *et = st->getStructElementType(b.index);
+@@ -745,7 +745,7 @@ ref<Expr> generateExp(BoundAST &bast, const MemoryObject *mo, const ObjectState
+ 
+ unsigned getWidth(BoundAST &bast,ASTNode *n, Function *f, ref<Expr> retVal) {
+   if (!retVal.isNull()) return retVal->getWidth();
+-  if (dynamic_cast<IdentifierNode*>(n)) {
++  if (static_cast<IdentifierNode*>(n)) {
+      IdentifierNode *in = (IdentifierNode*)n;
+      Binding b = bast.bindings[in->value];
+      Type *t = NULL;
+@@ -779,13 +779,13 @@ bool applyEquality(BoundAST &bast, Function *f, std::map<unsigned,
+    value = NULL;
+ 
+    unsigned width = getWidth(bast,bast.ast,f,NULL);   
+-   if (dynamic_cast<ConstantNode*>(n1)) {
++   if (static_cast<ConstantNode*>(n1)) {
+       value = ConstantExpr::alloc(((ConstantNode*)n1)->value, width);
+    }
+-   if (dynamic_cast<ConstantNode*>(n2)) {
++   if (static_cast<ConstantNode*>(n2)) {
+       value = ConstantExpr::alloc(((ConstantNode*)n2)->value, width);
+    }
+-   if (dynamic_cast<IdentifierNode*>(n1)) {
++   if (static_cast<IdentifierNode*>(n1)) {
+       IdentifierNode *in = (IdentifierNode*)n1;
+       Binding b = bast.bindings[in->value];
+       if (b.comptype == "argsize") {
+@@ -794,7 +794,7 @@ bool applyEquality(BoundAST &bast, Function *f, std::map<unsigned,
+          }        
+       }
+    }
+-   if (dynamic_cast<IdentifierNode*>(n2)) {
++   if (static_cast<IdentifierNode*>(n2)) {
+       IdentifierNode *in = (IdentifierNode*)n2;
+       Binding b = bast.bindings[in->value];
+       if (b.comptype == "argsize") {
+@@ -808,7 +808,7 @@ bool applyEquality(BoundAST &bast, Function *f, std::map<unsigned,
+ 
+ 
+    bool wrote = false;
+-   if (dynamic_cast<IdentifierNode*>(n1)) {
++   if (static_cast<IdentifierNode*>(n1)) {
+       IdentifierNode *in = (IdentifierNode*)n1;
+       Binding b = bast.bindings[in->value];
+       if (b.comptype == "return") { // todo
+@@ -825,7 +825,7 @@ bool applyEquality(BoundAST &bast, Function *f, std::map<unsigned,
+          }
+      }
+    }
+-   if (dynamic_cast<IdentifierNode*>(n2)) {
++   if (static_cast<IdentifierNode*>(n2)) {
+       IdentifierNode *in = (IdentifierNode*)n2;
+       Binding b = bast.bindings[in->value];
+       if (b.comptype == "return") { // todo
+@@ -960,11 +960,11 @@ ref<Expr> generateExp(BoundAST &bast, ASTNode *n, Function *f, std::map<unsigned
+       return res; 
+    } 
+    if (n->oper == NOOP) {
+-      if (dynamic_cast<ConstantNode*>(n)) {
++      if (static_cast<ConstantNode*>(n)) {
+          res = ConstantExpr::alloc(((ConstantNode*)n)->value, width);
+          return res;          
+       }
+-      else if (dynamic_cast<IdentifierNode*>(n)) {
++      else if (static_cast<IdentifierNode*>(n)) {
+          IdentifierNode *in = (IdentifierNode*)n;
+          Binding b = bast.bindings[in->value];
+          if (b.comptype == "return") {
+@@ -1008,24 +1008,24 @@ bool isSimpleEquality(BoundAST &bast) {
+    if (bast.ast->oper == EQ) {
+       ASTNode *n1 = bast.ast->getChild(0);
+       ASTNode *n2 = bast.ast->getChild(1);
+-      if (dynamic_cast<ConstantNode*>(n1)) {
+-        if (dynamic_cast<IdentifierNode*>(n2)) {
++      if (static_cast<ConstantNode*>(n1)) {
++        if (static_cast<IdentifierNode*>(n2)) {
+            IdentifierNode *in = (IdentifierNode*)n2;
+            Binding b = bast.bindings[in->value];
+            if (b.comptype == "none")
+               return true;
+         }
+       }
+-      else if (dynamic_cast<ConstantNode*>(n2)) { 
+-         if (dynamic_cast<IdentifierNode*>(n1)) {
++      else if (static_cast<ConstantNode*>(n2)) { 
++         if (static_cast<IdentifierNode*>(n1)) {
+             IdentifierNode *in = (IdentifierNode*)n1;
+             Binding b = bast.bindings[in->value];
+             if (b.comptype == "none")
+                return true;
+          }
+       }
+-      else if (dynamic_cast<IdentifierNode*>(n1) && 
+-                dynamic_cast<IdentifierNode*>(n2)) {
++      else if (static_cast<IdentifierNode*>(n1) && 
++                static_cast<IdentifierNode*>(n2)) {
+          IdentifierNode *in1 = (IdentifierNode*)n1;
+          IdentifierNode *in2 = (IdentifierNode*)n2;
+          Binding b1 = bast.bindings[in1->value]; 
+@@ -1047,8 +1047,8 @@ bool isSizeOfConstant(BoundAST &bast, Binding &bout, unsigned &size) {
+    if (bast.ast->oper == EQ) {
+       ASTNode *n1 = bast.ast->getChild(0);
+       ASTNode *n2 = bast.ast->getChild(1);
+-      if (dynamic_cast<ConstantNode*>(n1)) {
+-        if (dynamic_cast<IdentifierNode*>(n2)) {
++      if (static_cast<ConstantNode*>(n1)) {
++        if (static_cast<IdentifierNode*>(n2)) {
+            IdentifierNode *in = (IdentifierNode*)n2;
+            Binding b = bast.bindings[in->value];
+            if (b.comptype == "sizeof")  {
+@@ -1058,8 +1058,8 @@ bool isSizeOfConstant(BoundAST &bast, Binding &bout, unsigned &size) {
+            }
+         }
+       }
+-      else if (dynamic_cast<ConstantNode*>(n2)) {
+-        if (dynamic_cast<IdentifierNode*>(n1)) {
++      else if (static_cast<ConstantNode*>(n2)) {
++        if (static_cast<IdentifierNode*>(n1)) {
+            IdentifierNode *in = (IdentifierNode*)n1;
+            Binding b = bast.bindings[in->value];
+            if (b.comptype == "sizeof") {
+@@ -1078,8 +1078,8 @@ bool isArgSizeConstant(BoundAST &bast, Binding &bout, unsigned &size) {
+    if (bast.ast->oper == EQ) {
+       ASTNode *n1 = bast.ast->getChild(0);
+       ASTNode *n2 = bast.ast->getChild(1);
+-      if (dynamic_cast<ConstantNode*>(n1)) {
+-        if (dynamic_cast<IdentifierNode*>(n2)) {
++      if (static_cast<ConstantNode*>(n1)) {
++        if (static_cast<IdentifierNode*>(n2)) {
+            IdentifierNode *in = (IdentifierNode*)n2;
+            Binding b = bast.bindings[in->value];
+            if (b.comptype == "argsize")  {
+@@ -1089,8 +1089,8 @@ bool isArgSizeConstant(BoundAST &bast, Binding &bout, unsigned &size) {
+            }
+         }
+       }
+-      else if (dynamic_cast<ConstantNode*>(n2)) {
+-        if (dynamic_cast<IdentifierNode*>(n1)) {
++      else if (static_cast<ConstantNode*>(n2)) {
++        if (static_cast<IdentifierNode*>(n1)) {
+            IdentifierNode *in = (IdentifierNode*)n1;
+            Binding b = bast.bindings[in->value];
+            if (b.comptype == "argsize") {
+diff --git a/lib/Solver/Z3Builder.cpp b/lib/Solver/Z3Builder.cpp
+index d03c4c8..79196cb 100755
+--- a/lib/Solver/Z3Builder.cpp
++++ b/lib/Solver/Z3Builder.cpp
+@@ -21,6 +21,11 @@
+ 
+ using namespace klee;
+ 
++//muqi
++using namespace llvm::sys;
++#include "klee/Expr.h"
++
++
+ namespace {
+ llvm::cl::opt<bool> UseConstructHashZ3(
+     "use-construct-hash-z3",
+@@ -33,14 +38,44 @@ bool Z3InterationLogOpen = false;
+ 
+ namespace klee {
+ 
++//muqi
++#define Muqi_DEBUG;
++
+ // Declared here rather than `Z3Builder.h` so they can be called in gdb.
+ template <> void Z3NodeHandle<Z3_sort>::dump() {
++  #if defined(Muqi_DEBUG)
++
+   llvm::errs() << "Z3SortHandle:\n" << ::Z3_sort_to_string(context, node)
+                << "\n";
++  
++  std::string Path = klee_muqi_compare_file_path;
++  std::error_code EC;
++  fs::OpenFlags Flags = (fs::OpenFlags)2;
++  llvm::raw_fd_ostream *example_ostream = new llvm::raw_fd_ostream(Path, EC, Flags);
++  if(EC)
++    llvm::errs() << "Error opening " << Path << "\n";
++  (*example_ostream)  << "\n----dump z3 start----\n" ;  
++  (*example_ostream)  << "Z3SortHandle:\n" << ::Z3_sort_to_string(context, node);
++  (*example_ostream)  << "\n----dump z3 end----\n" ;
++  delete example_ostream;
++  #endif
+ }
+ template <> void Z3NodeHandle<Z3_ast>::dump() {
++  #if defined(Muqi_DEBUG)
+   llvm::errs() << "Z3ASTHandle:\n" << ::Z3_ast_to_string(context, as_ast())
+                << "\n";
++
++  std::string Path = klee_muqi_compare_file_path;
++  std::error_code EC;
++  fs::OpenFlags Flags = (fs::OpenFlags)2;
++  llvm::raw_fd_ostream *example_ostream = new llvm::raw_fd_ostream(Path, EC, Flags);
++  if(EC)
++    llvm::errs() << "Error opening " << Path << "\n";
++  (*example_ostream)  << "\n----dump z3 start----\n" ;
++  (*example_ostream)  << "Z3ASTHandle:\n" << ::Z3_ast_to_string(context, as_ast()); 
++  (*example_ostream)  << "\n----dump z3 end----\n" ;
++  delete example_ostream;
++  #endif
+ }
+ 
+ void custom_z3_error_handler(Z3_context ctx, Z3_error_code ec) {
+@@ -50,7 +85,10 @@ void custom_z3_error_handler(Z3_context ctx, Z3_error_code ec) {
+       Z3_get_error_msg(ctx, ec);
+ #else
+       // Z3 4.4.1
+-      Z3_get_error_msg(ec);
++      //muqi
++      //my z3 version is Z3 version 4.8.9 - 64 bit and it looks like klee cannot identify the latest version
++      //change Z3_get_error_msg(ec); --> Z3_get_error_msg(ctx,ec);
++      Z3_get_error_msg(ctx,ec);
+ #endif
+   // FIXME: This is kind of a hack. The value comes from the enum
+   // Z3_CANCELED_MSG but this isn't currently exposed by Z3's C API
+@@ -92,7 +130,8 @@ Z3Builder::Z3Builder(bool autoClearConstructCache, const char* z3LogInteractionF
+   // Make sure we handle any errors reported by Z3.
+   Z3_set_error_handler(ctx, custom_z3_error_handler);
+   // When emitting Z3 expressions make them SMT-LIBv2 compliant
+-  Z3_set_ast_print_mode(ctx, Z3_PRINT_SMTLIB2_COMPLIANT);
++  //Z3_set_ast_print_mode(ctx, Z3_PRINT_SMTLIB2_COMPLIANT);
++  Z3_set_ast_print_mode(ctx, Z3_PRINT_SMTLIB_FULL);
+   Z3_del_config(cfg);
+ }
+ 
+@@ -396,7 +435,10 @@ Z3ASTHandle Z3Builder::getInitialArray(const Array *root) {
+     unsigned const space = (root->name.length() > 32 - uid_length)
+                                ? (32 - uid_length)
+                                : root->name.length();
+-    std::string unique_name = root->name.substr(0, space) + unique_id;
++
++    //muqi! no more unique_id for array, they should be the same as input in our cases
++    //std::string unique_name = root->name.substr(0, space) + unique_id;
++    std::string unique_name = root->name.substr(0, space) ;
+ 
+     array_expr = buildArray(unique_name.c_str(), root->getDomain(),
+                             root->getRange());
+@@ -454,8 +496,10 @@ Z3ASTHandle Z3Builder::construct(ref<Expr> e, int *width_out) {
+   // TODO: We could potentially use Z3_simplify() here
+   // to store simpler expressions.
+   if (!UseConstructHashZ3 || isa<ConstantExpr>(e)) {
++    llvm::errs()<<"Inside isa constantexpr Z3Builder::construct\n";
+     return constructActual(e, width_out);
+   } else {
++    llvm::errs()<<"Inside not isa constantexpr \n";
+     ExprHashMap<std::pair<Z3ASTHandle, unsigned> >::iterator it =
+         constructed.find(e);
+     if (it != constructed.end()) {
+@@ -473,13 +517,42 @@ Z3ASTHandle Z3Builder::construct(ref<Expr> e, int *width_out) {
+   }
+ }
+ 
++/** if *width_out!=1 then result is a bitvector,
++    otherwise it is a bool */
++Z3ASTHandle Z3Builder::construct_muqi_solver(ref<Expr> e, int *width_out) {
++  // TODO: We could potentially use Z3_simplify() here
++  // to store simpler expressions.
++  if (!UseConstructHashZ3 || isa<ConstantExpr>(e)) {
++    llvm::errs()<<"Inside isa constantexpr Z3Builder::construct_muqi_solver\n";
++    return constructActual_muqi(e, width_out);
++  } else {
++    llvm::errs()<<"Inside not isa constantexpr,Z3Builder::construct_muqi_solver \n";
++    ExprHashMap<std::pair<Z3ASTHandle, unsigned> >::iterator it =
++        constructed.find(e);
++    if (it != constructed.end()) {
++      if (width_out)
++        *width_out = it->second.second;
++      return it->second.first;
++    } else {
++      int width;
++      if (!width_out)
++        width_out = &width;
++      Z3ASTHandle res = constructActual_muqi(e, width_out);
++      constructed.insert(std::make_pair(e, std::make_pair(res, *width_out)));
++      return res;
++    }
++  }
++}
++
+ /** if *width_out!=1 then result is a bitvector,
+     otherwise it is a bool */
+ Z3ASTHandle Z3Builder::constructActual(ref<Expr> e, int *width_out) {
+   int width;
++  //llvm::errs()<<"Inside constructActual, *width_out is:" << *width_out<<"\n";
+   if (!width_out)
+     width_out = &width;
+-
++  //llvm::errs()<<"Inside constructActual, *width_out is:" << *width_out<<"\n";
++  llvm::errs()<<"e->getKind() is: "<<e->getKind()<<"\n";
+   ++stats::queryConstructs;
+ 
+   switch (e->getKind()) {
+@@ -857,5 +930,400 @@ Z3ASTHandle Z3Builder::constructActual(ref<Expr> e, int *width_out) {
+     return getTrue();
+   }
+ }
++
++
++
++/** if *width_out!=1 then result is a bitvector,
++    otherwise it is a bool */
++Z3ASTHandle Z3Builder::constructActual_muqi(ref<Expr> e, int *width_out) {
++  int width;
++  //llvm::errs()<<"Inside constructActual_muqi, *width_out is:" << *width_out<<"\n";
++  if (!width_out)
++    width_out = &width;
++  llvm::errs()<<"Inside constructActual_muqi, *width_out is:" << *width_out<<"\n";
++  llvm::errs()<<"e->getKind() is: "<<e->getKind()<<"\n";
++  ++stats::queryConstructs;
++
++  switch (e->getKind()) {
++  case Expr::Constant: {
++    ConstantExpr *CE = cast<ConstantExpr>(e);
++    *width_out = CE->getWidth();
++    llvm::errs()<<"Inside constructActual_muqi constant condition, *width_out is:" << *width_out<<"\n";
++    // Coerce to bool if necessary.
++    
++    if (*width_out == 1)
++      return CE->isTrue() ? getTrue() : getFalse();
++
++    // Fast path.
++    if (*width_out <= 32)
++      return bvConst32(*width_out, CE->getZExtValue(32));
++    
++    if (*width_out <= 64)
++      return bvConst64(*width_out, CE->getZExtValue());
++
++    ref<ConstantExpr> Tmp = CE;
++    Z3ASTHandle Res = bvConst64(64, Tmp->Extract(0, 64)->getZExtValue());
++    while (Tmp->getWidth() > 64) {
++      Tmp = Tmp->Extract(64, Tmp->getWidth() - 64);
++      unsigned Width = std::min(64U, Tmp->getWidth());
++      Res = Z3ASTHandle(
++          Z3_mk_concat(ctx,
++                       bvConst64(Width, Tmp->Extract(0, Width)->getZExtValue()),
++                       Res),
++          ctx);
++    }
++    return Res;
++  }
++
++  // Special
++  case Expr::NotOptimized: {
++    NotOptimizedExpr *noe = cast<NotOptimizedExpr>(e);
++    return construct_muqi_solver(noe->src, width_out);
++  }
++
++  case Expr::Read: {
++    ReadExpr *re = cast<ReadExpr>(e);
++    assert(re && re->updates.root);
++    *width_out = re->updates.root->getRange();
++    //*width_out = 64;
++    llvm::errs()<<"Inside constructActual_muqi Read condition, *width_out is:" << *width_out<<"\n";
++    //do some concat 0 extend to 64 bits here
++    return readExpr(getArrayForUpdate(re->updates.root, re->updates.head),
++                    construct_muqi_solver(re->index, 0));
++  }
++
++  case Expr::Select: {
++    SelectExpr *se = cast<SelectExpr>(e);
++    Z3ASTHandle cond = construct_muqi_solver(se->cond, 0);
++    Z3ASTHandle tExpr = construct_muqi_solver(se->trueExpr, width_out);
++    Z3ASTHandle fExpr = construct_muqi_solver(se->falseExpr, width_out);
++    return iteExpr(cond, tExpr, fExpr);
++  }
++
++  case Expr::Concat: {
++    ConcatExpr *ce = cast<ConcatExpr>(e);
++    unsigned numKids = ce->getNumKids();
++    Z3ASTHandle res = construct_muqi_solver(ce->getKid(numKids - 1), 0);
++    for (int i = numKids - 2; i >= 0; i--) {
++      res =
++          Z3ASTHandle(Z3_mk_concat(ctx, construct_muqi_solver(ce->getKid(i), 0), res), ctx);
++    }
++    *width_out = ce->getWidth();
++    return res;
++  }
++
++  case Expr::Extract: {
++    ExtractExpr *ee = cast<ExtractExpr>(e);
++    Z3ASTHandle src = construct_muqi_solver(ee->expr, width_out);
++    *width_out = ee->getWidth();
++    if (*width_out == 1) {
++      return bvBoolExtract(src, ee->offset);
++    } else {
++      return bvExtract(src, ee->offset + *width_out - 1, ee->offset);
++    }
++  }
++
++  // Casting
++
++  case Expr::ZExt: {
++    int srcWidth;
++    CastExpr *ce = cast<CastExpr>(e);
++    Z3ASTHandle src = construct_muqi_solver(ce->src, &srcWidth);
++    *width_out = ce->getWidth();
++    if (srcWidth == 1) {
++      return iteExpr(src, bvOne(*width_out), bvZero(*width_out));
++    } else {
++      assert(*width_out > srcWidth && "Invalid width_out");
++      return Z3ASTHandle(Z3_mk_concat(ctx, bvZero(*width_out - srcWidth), src),
++                         ctx);
++    }
++  }
++
++  case Expr::SExt: {
++    int srcWidth;
++    CastExpr *ce = cast<CastExpr>(e);
++    Z3ASTHandle src = construct_muqi_solver(ce->src, &srcWidth);
++    *width_out = ce->getWidth();
++    if (srcWidth == 1) {
++      return iteExpr(src, bvMinusOne(*width_out), bvZero(*width_out));
++    } else {
++      return bvSignExtend(src, *width_out);
++    }
++  }
++
++  // Arithmetic
++  case Expr::Add: {
++    AddExpr *ae = cast<AddExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ae->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(ae->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized add");
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvadd(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::Sub: {
++    SubExpr *se = cast<SubExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(se->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(se->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized sub");
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvsub(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::Mul: {
++    MulExpr *me = cast<MulExpr>(e);
++    Z3ASTHandle right = construct_muqi_solver(me->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized mul");
++    Z3ASTHandle left = construct_muqi_solver(me->left, width_out);
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvmul(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::UDiv: {
++    UDivExpr *de = cast<UDivExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(de->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized udiv");
++
++    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(de->right)) {
++      if (CE->getWidth() <= 64) {
++        uint64_t divisor = CE->getZExtValue();
++        if (bits64::isPowerOfTwo(divisor))
++          return bvRightShift(left, bits64::indexOfSingleBit(divisor));
++      }
++    }
++
++    Z3ASTHandle right = construct_muqi_solver(de->right, width_out);
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvudiv(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::SDiv: {
++    SDivExpr *de = cast<SDivExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(de->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized sdiv");
++    Z3ASTHandle right = construct_muqi_solver(de->right, width_out);
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvsdiv(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::URem: {
++    URemExpr *de = cast<URemExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(de->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized urem");
++
++    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(de->right)) {
++      if (CE->getWidth() <= 64) {
++        uint64_t divisor = CE->getZExtValue();
++
++        if (bits64::isPowerOfTwo(divisor)) {
++          // FIXME: This should be unsigned but currently needs to be signed to
++          // avoid signed-unsigned comparison in assert.
++          int bits = bits64::indexOfSingleBit(divisor);
++
++          // special case for modding by 1 or else we bvExtract -1:0
++          if (bits == 0) {
++            return bvZero(*width_out);
++          } else {
++            assert(*width_out > bits && "invalid width_out");
++            return Z3ASTHandle(Z3_mk_concat(ctx, bvZero(*width_out - bits),
++                                            bvExtract(left, bits - 1, 0)),
++                               ctx);
++          }
++        }
++      }
++    }
++
++    Z3ASTHandle right = construct_muqi_solver(de->right, width_out);
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvurem(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  case Expr::SRem: {
++    SRemExpr *de = cast<SRemExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(de->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(de->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized srem");
++    // LLVM's srem instruction says that the sign follows the dividend
++    // (``left``).
++    // Z3's C API says ``Z3_mk_bvsrem()`` does this so these seem to match.
++    Z3ASTHandle result = Z3ASTHandle(Z3_mk_bvsrem(ctx, left, right), ctx);
++    assert(getBVLength(result) == static_cast<unsigned>(*width_out) &&
++           "width mismatch");
++    return result;
++  }
++
++  // Bitwise
++  case Expr::Not: {
++    NotExpr *ne = cast<NotExpr>(e);
++    Z3ASTHandle expr = construct_muqi_solver(ne->expr, width_out);
++    if (*width_out == 1) {
++      return notExpr(expr);
++    } else {
++      return bvNotExpr(expr);
++    }
++  }
++
++  case Expr::And: {
++    AndExpr *ae = cast<AndExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ae->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(ae->right, width_out);
++    if (*width_out == 1) {
++      return andExpr(left, right);
++    } else {
++      return bvAndExpr(left, right);
++    }
++  }
++
++  case Expr::Or: {
++    OrExpr *oe = cast<OrExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(oe->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(oe->right, width_out);
++    if (*width_out == 1) {
++      return orExpr(left, right);
++    } else {
++      return bvOrExpr(left, right);
++    }
++  }
++
++  case Expr::Xor: {
++    XorExpr *xe = cast<XorExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(xe->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(xe->right, width_out);
++
++    if (*width_out == 1) {
++      // XXX check for most efficient?
++      return iteExpr(left, Z3ASTHandle(notExpr(right)), right);
++    } else {
++      return bvXorExpr(left, right);
++    }
++  }
++
++  case Expr::Shl: {
++    ShlExpr *se = cast<ShlExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(se->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized shl");
++
++    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(se->right)) {
++      return bvLeftShift(left, (unsigned)CE->getLimitedValue());
++    } else {
++      int shiftWidth;
++      Z3ASTHandle amount = construct_muqi_solver(se->right, &shiftWidth);
++      return bvVarLeftShift(left, amount);
++    }
++  }
++
++  case Expr::LShr: {
++    LShrExpr *lse = cast<LShrExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(lse->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized lshr");
++
++    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(lse->right)) {
++      return bvRightShift(left, (unsigned)CE->getLimitedValue());
++    } else {
++      int shiftWidth;
++      Z3ASTHandle amount = construct_muqi_solver(lse->right, &shiftWidth);
++      return bvVarRightShift(left, amount);
++    }
++  }
++
++  case Expr::AShr: {
++    AShrExpr *ase = cast<AShrExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ase->left, width_out);
++    assert(*width_out != 1 && "uncanonicalized ashr");
++
++    if (ConstantExpr *CE = dyn_cast<ConstantExpr>(ase->right)) {
++      unsigned shift = (unsigned)CE->getLimitedValue();
++      Z3ASTHandle signedBool = bvBoolExtract(left, *width_out - 1);
++      return constructAShrByConstant(left, shift, signedBool);
++    } else {
++      int shiftWidth;
++      Z3ASTHandle amount = construct_muqi_solver(ase->right, &shiftWidth);
++      return bvVarArithRightShift(left, amount);
++    }
++  }
++
++  // Comparison
++
++  case Expr::Eq: {
++    EqExpr *ee = cast<EqExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ee->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(ee->right, width_out);
++    if (*width_out == 1) {
++      if (ConstantExpr *CE = dyn_cast<ConstantExpr>(ee->left)) {
++        if (CE->isTrue())
++          return right;
++        return notExpr(right);
++      } else {
++        return iffExpr(left, right);
++      }
++    } else {
++      *width_out = 1;
++      return eqExpr(left, right);
++    }
++  }
++
++  case Expr::Ult: {
++    UltExpr *ue = cast<UltExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ue->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(ue->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized ult");
++    *width_out = 1;
++    return bvLtExpr(left, right);
++  }
++
++  case Expr::Ule: {
++    UleExpr *ue = cast<UleExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(ue->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(ue->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized ule");
++    *width_out = 1;
++    return bvLeExpr(left, right);
++  }
++
++  case Expr::Slt: {
++    SltExpr *se = cast<SltExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(se->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(se->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized slt");
++    *width_out = 1;
++    return sbvLtExpr(left, right);
++  }
++
++  case Expr::Sle: {
++    SleExpr *se = cast<SleExpr>(e);
++    Z3ASTHandle left = construct_muqi_solver(se->left, width_out);
++    Z3ASTHandle right = construct_muqi_solver(se->right, width_out);
++    assert(*width_out != 1 && "uncanonicalized sle");
++    *width_out = 1;
++    return sbvLeExpr(left, right);
++  }
++
++// unused due to canonicalization
++#if 0
++  case Expr::Ne:
++  case Expr::Ugt:
++  case Expr::Uge:
++  case Expr::Sgt:
++  case Expr::Sge:
++#endif
++
++  default:
++    assert(0 && "unhandled Expr type");
++    return getTrue();
++  }
++}
++
+ }
+ #endif // ENABLE_Z3
+diff --git a/lib/Solver/Z3Builder.h b/lib/Solver/Z3Builder.h
+index 7cdb2b5..5af56e0 100755
+--- a/lib/Solver/Z3Builder.h
++++ b/lib/Solver/Z3Builder.h
+@@ -158,7 +158,9 @@ private:
+   Z3ASTHandle getArrayForUpdate(const Array *root, const UpdateNode *un);
+ 
+   Z3ASTHandle constructActual(ref<Expr> e, int *width_out);
++  Z3ASTHandle constructActual_muqi(ref<Expr> e, int *width_out);
+   Z3ASTHandle construct(ref<Expr> e, int *width_out);
++  Z3ASTHandle construct_muqi_solver(ref<Expr> e, int *width_out);
+ 
+   Z3ASTHandle buildArray(const char *name, unsigned indexWidth,
+                          unsigned valueWidth);
+diff --git a/lib/Solver/Z3Solver.cpp b/lib/Solver/Z3Solver.cpp
+index e89c946..77b6bc7 100755
+--- a/lib/Solver/Z3Solver.cpp
++++ b/lib/Solver/Z3Solver.cpp
+@@ -354,7 +354,7 @@ SolverImpl::SolverRunStatus Z3SolverImpl::handleSolverResponse(
+ 
+         bool successfulEval =
+             Z3_model_eval(builder->ctx, theModel, initial_read,
+-                          /*model_completion=*/Z3_TRUE, &arrayElementExpr);
++                          /*model_completion=*/Z3_L_TRUE, &arrayElementExpr);
+         assert(successfulEval && "Failed to evaluate model");
+         Z3_inc_ref(builder->ctx, arrayElementExpr);
+         assert(Z3_get_ast_kind(builder->ctx, arrayElementExpr) ==
+@@ -419,7 +419,7 @@ bool Z3SolverImpl::validateZ3Model(::Z3_solver &theSolver, ::Z3_model &theModel)
+     ::Z3_ast rawEvaluatedExpr;
+     bool successfulEval =
+         Z3_model_eval(builder->ctx, theModel, constraint,
+-                      /*model_completion=*/Z3_TRUE, &rawEvaluatedExpr);
++                      /*model_completion=*/Z3_L_TRUE, &rawEvaluatedExpr);
+     assert(successfulEval && "Failed to evaluate model");
+ 
+     // Use handle to do ref-counting.
+diff --git a/lib/Support/ErrorHandling.cpp b/lib/Support/ErrorHandling.cpp
+index 0064770..a87f7f6 100755
+--- a/lib/Support/ErrorHandling.cpp
++++ b/lib/Support/ErrorHandling.cpp
+@@ -12,6 +12,21 @@
+ #include "llvm/Support/raw_ostream.h"
+ #include "llvm/Support/CommandLine.h"
+ 
++//muqi
++#include "llvm/IR/Instruction.h"
++#include "llvm/IR/Function.h"
++
++#include "klee/Internal/ADT/RNG.h"
++#include "klee/Config/Version.h"
++#include "klee/Interpreter.h"
++
++#include "klee/util/Assignment.h"
++#include "klee/Expr.h"
++#include "klee/util/ExprPPrinter.h"
++#include "klee/util/ExprSMTLIBPrinter.h"
++#include "klee/util/ExprUtil.h"
++
++
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <stdarg.h>
+@@ -26,6 +41,11 @@ using namespace llvm;
+ FILE *klee::klee_warning_file = NULL;
+ FILE *klee::klee_message_file = NULL;
+ 
++//muqi
++FILE *klee::klee_muqi_file = NULL;
++FILE *klee::klee_muqi_compare_file = NULL;
++FILE *klee::klee_muqi_compare_file_test = NULL;
++
+ static const char *warningPrefix = "WARNING";
+ static const char *warningOncePrefix = "WARNING ONCE";
+ static const char *errorPrefix = "ERROR";
+@@ -102,6 +122,62 @@ static void klee_vfmessage(FILE *fp, const char *pfx, const char *msg,
+   fdos.flush();
+ }
+ 
++static void klee_vfmessage_compare(FILE *fp, const char *pfx, const char *msg,
++                           va_list ap) {
++  if (!fp)
++    return;
++
++  llvm::raw_fd_ostream fdos(fileno(fp), /*shouldClose=*/false,
++                            /*unbuffered=*/true);
++  bool modifyConsoleColor = fdos.is_displayed() && (fp == stderr);
++
++  if (modifyConsoleColor) {
++
++    // Warnings
++    if (shouldSetColor(pfx, msg, warningPrefix))
++      fdos.changeColor(llvm::raw_ostream::MAGENTA,
++                       /*bold=*/false,
++                       /*bg=*/false);
++
++    // Once warning
++    if (shouldSetColor(pfx, msg, warningOncePrefix))
++      fdos.changeColor(llvm::raw_ostream::MAGENTA,
++                       /*bold=*/true,
++                       /*bg=*/false);
++
++    // Errors
++    if (shouldSetColor(pfx, msg, errorPrefix))
++      fdos.changeColor(llvm::raw_ostream::RED,
++                       /*bold=*/true,
++                       /*bg=*/false);
++
++    // Notes
++    if (shouldSetColor(pfx, msg, notePrefix))
++      fdos.changeColor(llvm::raw_ostream::WHITE,
++                       /*bold=*/true,
++                       /*bg=*/false);
++  }
++
++  //fdos << "KLEE: ";
++  //if (pfx)
++  //  fdos << pfx << ": ";
++
++  // FIXME: Can't use fdos here because we need to print
++  // a variable number of arguments and do substitution
++  vfprintf(fp, msg, ap);
++  fflush(fp);
++
++  //fdos << "\n";
++
++  if (modifyConsoleColor)
++    fdos.resetColor();
++
++  fdos.flush();
++}
++
++
++
++
+ /* Prints a message/warning.
+ 
+    If pfx is NULL, this is a regular message, and it's sent to
+@@ -129,6 +205,74 @@ void klee::klee_message(const char *msg, ...) {
+   va_end(ap);
+ }
+ 
++
++//muqi
++
++static void klee_vmuqi(const char *pfx, bool onlyToFile, const char *msg,
++                          va_list ap) {
++  if (!onlyToFile) {
++    va_list ap2;
++    va_copy(ap2, ap);
++    klee_vfmessage(stderr, pfx, msg, ap2);
++    va_end(ap2);
++  }
++
++  klee_vfmessage(pfx ? klee_warning_file : klee_muqi_file, pfx, msg, ap);
++}
++#define Muqi_DEBUG;
++void klee::klee_muqi(const char *msg, ...) {
++  #if defined(Muqi_DEBUG)
++  va_list ap;
++  va_start(ap, msg);
++  klee_vmuqi(NULL, false, msg, ap);
++  va_end(ap);
++  #endif
++}
++#define Muqi_DEBUG_Compare
++static void klee_vmuqi_compare(const char *pfx, bool onlyToFile, const char *msg,
++                          va_list ap) {
++  #if defined(Muqi_DEBUG_Compare)
++  if (!onlyToFile) {
++    va_list ap2;
++    va_copy(ap2, ap);
++    klee_vfmessage_compare(stderr, pfx, msg, ap2);
++    va_end(ap2);
++  }
++
++  klee_vfmessage_compare(pfx ? klee_warning_file : klee_muqi_compare_file_test, pfx, msg, ap);
++  #endif
++}
++
++void klee::klee_muqi_compare_test(const char *function_name, const char *msg, ...) {
++   
++   if(function_name == NULL){
++     klee_muqi_compare("\nFunction start: unknown");
++   }else{
++     //llvm::Function *tempfunc = i->getFunction();
++    //->getFunction()->getName().str().c_str()
++     //klee_muqi_compare("\nFunction start: %s ", i->getFunction()->getName().data());
++     //  klee_muqi_compare("\nFunction start: %s ", i->getFunction()->getName().str().c_str());
++     klee_muqi_compare("\nFunction start: %s ", function_name);
++   }
++   va_list pArg;
++   va_start(pArg, msg);
++   klee_vmuqi_compare(NULL, false, msg, pArg);
++   va_end(pArg);
++   klee_muqi_compare("\nFunction end \n");
++
++
++}
++
++
++void klee::klee_muqi_compare(const char *msg, ...) {
++  va_list ap;
++  va_start(ap, msg);
++  klee_vmuqi_compare(NULL, false, msg, ap);
++  va_end(ap);
++}
++
++
++
+ /* Message to be written only to file */
+ void klee::klee_message_to_file(const char *msg, ...) {
+   va_list ap;
+diff --git a/runtime/POSIX/fd_64.c b/runtime/POSIX/fd_64.c
+index 03fccc4..6a7bae2 100755
+--- a/runtime/POSIX/fd_64.c
++++ b/runtime/POSIX/fd_64.c
+@@ -107,7 +107,8 @@ int statfs(const char *path, struct statfs *buf) {
+   return __fd_statfs(path, buf);
+ }
+ 
+-int getdents64(unsigned int fd, struct dirent *dirp, unsigned int count) {
++//int getdents64(unsigned int fd, struct dirent *dirp, unsigned int count) {
++__ssize_t getdents64 (int fd, void *dirp, size_t count){
+   return __fd_getdents(fd, (struct dirent64*) dirp, count);
+ }
+ int __getdents64(unsigned int fd, struct dirent *dirp, unsigned int count)
+diff --git a/tools/klee/main.cpp b/tools/klee/main.cpp
+index a5dc7c2..e693967 100755
+--- a/tools/klee/main.cpp
++++ b/tools/klee/main.cpp
+@@ -48,6 +48,9 @@
+ #include "llvm/Support/TargetSelect.h"
+ #include "llvm/Support/Signals.h"
+ 
++//muqi
++#include "klee/Expr.h"
++
+ #if LLVM_VERSION_CODE < LLVM_VERSION(3, 5)
+ #include "llvm/Support/system_error.h"
+ #endif
+@@ -64,7 +67,7 @@
+ #include <iomanip>
+ #include <iterator>
+ #include <sstream>
+-
++#include <regex>
+ 
+ using namespace llvm;
+ using namespace klee;
+@@ -563,7 +566,7 @@ private:
+   char **m_argv;
+ 
+ public:
+-  KleeHandler(int argc, char **argv);
++  KleeHandler(std::string programe_function_name,int argc, char **argv);
+   ~KleeHandler();
+ 
+   llvm::raw_ostream &getInfoStream() const { return *m_infoFile; }
+@@ -593,7 +596,7 @@ public:
+   static std::string getRunTimeLibraryPath(const char *argv0);
+ };
+ 
+-KleeHandler::KleeHandler(int argc, char **argv)
++KleeHandler::KleeHandler(std::string programe_function_name, int argc, char **argv)
+     : m_interpreter(0), m_pathWriter(0), m_symPathWriter(0), m_infoFile(0),
+       m_outputDirectory(), m_numTotalTests(0), m_numGeneratedTests(0),
+       m_pathsExplored(0), m_argc(argc), m_argv(argv) {
+@@ -667,6 +670,50 @@ KleeHandler::KleeHandler(int argc, char **argv)
+   if ((klee_message_file = fopen(file_path.c_str(), "w")) == NULL)
+     klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
+ 
++/*
++  //muqi
++  //file_path = getOutputFilename("muqi.txt");
++  file_path = ("/tmp/klee.txt");
++  if ((klee_muqi_file = fopen(file_path.c_str(), "w")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++
++  //file_path = getOutputFilename("muqi_symbolic_executation.txt");
++  file_path = ("/tmp/klee_symbolic_executation.txt");
++  if ((klee_muqi_compare_file = fopen(file_path.c_str(), "w")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++  
++  //file_path = getOutputFilename("muqi_test.txt");
++  file_path = ("/tmp/klee_test.txt");
++  klee_muqi_compare_file_path = file_path;
++  if ((klee_muqi_compare_file_test = fopen(file_path.c_str(), "a")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++*/
++    std::smatch m;
++  std::regex rgx("generatedbc/(.+*?)\\.bc") ;
++  std::regex_search (programe_function_name,m,rgx);
++  programe_function_name = m.str(1);
++
++  file_path = ("/tmp/klee_");
++  file_path += programe_function_name;
++  file_path += ".txt";
++  if ((klee_muqi_file = fopen(file_path.c_str(), "w")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++
++  file_path = ("/tmp/klee_");
++  file_path += programe_function_name;
++  file_path += "_symbolic_executation.txt";
++  if ((klee_muqi_compare_file = fopen(file_path.c_str(), "w")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++
++  file_path = ("/tmp/klee_");
++  file_path += programe_function_name;
++  file_path += "_test.txt";
++  klee_muqi_compare_file_path = file_path;
++  if ((klee_muqi_compare_file_test = fopen(file_path.c_str(), "a")) == NULL)
++    klee_error("cannot open file \"%s\": %s", file_path.c_str(), strerror(errno));
++
++
++
+   // open info
+   m_infoFile = openOutputFile("info");
+ }
+@@ -677,6 +724,10 @@ KleeHandler::~KleeHandler() {
+   fclose(klee_warning_file);
+   fclose(klee_message_file);
+   delete m_infoFile;
++  //muqi
++  fclose(klee_muqi_file);
++  fclose(klee_muqi_compare_file);
++  fclose(klee_muqi_compare_file_test);
+ }
+ 
+ void KleeHandler::setInterpreter(Interpreter *i) {
+@@ -2310,7 +2361,7 @@ int main(int argc, char **argv, char **envp) {
+ 
+   Interpreter::InterpreterOptions IOpts;
+   IOpts.MakeConcreteSymbolic = MakeConcreteSymbolic;
+-  KleeHandler *handler = new KleeHandler(pArgc, pArgv);
++  KleeHandler *handler = new KleeHandler(argv[argc-1],pArgc, pArgv);
+   Interpreter *interpreter =
+     theInterpreter = Interpreter::create(ctx, IOpts, handler);
+   handler->setInterpreter(interpreter);
