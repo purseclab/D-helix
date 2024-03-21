@@ -1,4 +1,5 @@
-# D-helix
+# D-Helix: A Generic Decompiler Testing Framework Using Symbolic Differentiation
+D-HELIX is a generic decompiler testing framework that can automatically vet the decompilation correctness on the function level.
 ### SYMDIFF:
 To run SYMDIFF, D-helix asks for two patched components: angr and prompt.
 #### Install/patch angr:
