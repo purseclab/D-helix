@@ -1,4 +1,5 @@
-# D-helix
+# D-Helix: A Generic Decompiler Testing Framework Using Symbolic Differentiation
+D-HELIX is a generic decompiler testing framework that can automatically vet the decompilation correctness on the function level.
 ### SYMDIFF:
 To run SYMDIFF, D-helix asks for two patched components: angr and prompt.
 #### Install/patch angr:
@@ -47,7 +48,7 @@ We build our prompt using the following commands:
 export LLVM_CONFIG=/home/muqi/llvm-3.8/llvm-src/build/bin/llvm-config <br>
 cmake     	-DENABLE_TCMALLOC=ON     	-DENABLE_POSIX_RUNTIME=ON     	-DENABLE_KLEE_UCLIBC=ON     	-DKLEE_UCLIBC_PATH=/home/muqi/klee-uclibc     	-DENABLE_SOLVER_Z3=ON     	-DENABLE_SOLVER_STP=OFF     	-DENABLE_SOLVER_METASMT=OFF     	-DENABLE_UNIT_TESTS=OFF -DENABLE_POSIX_RUNTIME=ON -DENABLE_KLEE_UCLIBC=ON -DLLVM_CONFIG_BINARY=/home/muqi/llvm-3.8/llvm-src/build/bin/llvm-config -DLLVMCC=/home/muqi/llvm-3.8/llvm-src/tool/clang/cfe-3.8.0.src/build/bin/clang -DLLVMCXX=/home/muqi/llvm-3.8/llvm-src/tool/clang/cfe-3.8.0.src/build/bin/clang++ ../ 
 </details>
-Finally, use prompt_diff.patch to patch the prompt.
+Finally, use different prompt_diff*.patch to patch the prompt for different purpose.
 
 We use Z3 with version 4.9.1 - 64 bit.
 
