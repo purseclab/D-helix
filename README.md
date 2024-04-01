@@ -37,8 +37,7 @@ pypy: b2198226e6194310c57a4b50ae9a6c82b1b6cd7f<br>
 pyvex: de7f92e126fbbaa61287e2a647be6f2871d56032<br>
 </details>
 After checkout the corresponding commit in angr, you may patch angr and claripy using different patch files. We currently only support loop-bound and external function call features specified in design 4.2.1 for Vex IR.
-After patching, copy muqi.py to the following directory:
-` ./angr-dev/angr/angr`
+After patching, copy muqi.py to the following directory: /angr-dev/angr/angr.
 
 #### Install/patch prompt:
 To install prompt, you need to install clang-3.8 first.
@@ -53,18 +52,28 @@ Finally, use different prompt_diff*.patch to patch the prompt for different purp
 We use Z3 with version 4.9.1 - 64 bit.
 
 #### Run SYMDIFF:
-After putting the binary D_helixxxx/test_muqi/originalclang, we run SYMDIFF by calling 'python generate_symbolic.py' in each D_helixxxx folder (For D_helix_ghidra, go into subdirectories named pcode_D-helix/vexir_D-helix). Before running, make sure: 
+After putting the binary D_helixxxx/test_muqi/originalclang, we run SYMDIFF by calling `python generate_symbolic.py` in each D_helixxxx folder (For D_helix_ghidra, go into subdirectories named pcode_D-helix/vexir_D-helix). Before running, make sure: 
 1. angr environment is correctly set.
 2. the clang compiler/ghidra/ghidra scripts folder address in generate_symbolic.py is correct.<br>
-Note, to enable the loop-bound feature in angr, uncomment the setting for 'loop_bound_cond' in 'angr/engines/vex/heavy/heavy.py'.
-After symbolic models are generated, run 'python check_diff.py' to generate the report for inaccuracies.
+Note, to enable the loop-bound feature in angr, uncomment the setting for `loop_bound_cond` in `angr/engines/vex/heavy/heavy.py`.
+After symbolic models are generated, run `python check_diff.py` to generate the report for inaccuracies.
 The result of SYMDIFF will be shown in a file named diff_result.
 
 ### Tuner:
 #### Patch Ghidra:
 You may patch Ghidra using ghidra_diff.patch with the following Ghidra commit:
 15d22e81643f4647fc2b985f61e44d9cdcee15da. <br>
-Or you may download the latest Ghidra. And to disable heuristics in Ghidra, you may follow our method for 'Rule *rl;' in Ghidra/Features/Decompiler/src/decompile/cpp/action.cc.
+Or you may download the latest Ghidra. And to disable heuristics in Ghidra, you may follow our method for `Rule *rl;` in `Ghidra/Features/Decompiler/src/decompile/cpp/action.cc.`
 #### Run Tuner:
-Before running tuner, make sure the inaccuracies detected from SYMDIFF is reported by running 'python check_diff.py'. After that, run 'python regenerated_inall.py' in subdirectory regenerated.
+Before running tuner, make sure the inaccuracies detected from SYMDIFF is reported by running `python check_diff.py`. After that, run `python regenerated_inall.py` in subdirectory regenerated.
 The result of Tuner will be shown in a directory called correct_result.
+
+### Citing this work:
+```
+@inproceedings{d-helix,
+  title={D-Helix: A Generic Decompiler Testing Framework Using Symbolic Differentiation},
+  author={Zou, Muqi and Khan, Arslan and Wu, Ruoyu and Gao, Han and Bianchi, Antonio and Tian, Dave (Jing)},
+  booktitle={33rd USENIX Security Symposium (USENIX Security 24)},
+  year={2024}
+}
+```
